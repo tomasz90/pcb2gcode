@@ -66,6 +66,14 @@ class path_and_direction {
   bool operator==(const path_and_direction& other) const {
     return path_index == other.path_index && side == other.side;
   }
+  bool operator<(const path_and_direction& other) const {
+    return std::tie(path_index, side) < std::tie(other.path_index, other.side);
+  }
+  friend std::ostream& operator<<(std::ostream& out, const path_and_direction& p) {
+    out << "path_index: " << p.path_index << ", side: " << p.side;
+    return out;
+  }
+
  private:
   size_t path_index;
   Side side;
@@ -184,7 +192,9 @@ class path_manager {
       }
     }
     for (auto const& bidi_edge : bidi_vertex_to_unvisited_path_index) {
-      bidi_conversion_score_cache.emplace(bidi_edge.second, compute_bidi_conversion_score(bidi_edge.second));
+      auto const score = compute_bidi_conversion_score(bidi_edge.second);
+      bidi_conversion_score_cache.emplace(bidi_edge.second, score);
+      bidi_conversion_sorted_scores.emplace(score, bidi_edge.second);
     }
   }
 
@@ -202,11 +212,23 @@ class path_manager {
     // that start or end at the endpoints of the converted edge.
     auto start_range = bidi_vertex_to_unvisited_path_index.equal_range(start_vertex);
     for (auto it = start_range.first; it != start_range.second; ++it) {
-      bidi_conversion_score_cache[it->second] = compute_bidi_conversion_score(it->second);
+      auto const old_score = bidi_conversion_score_cache.at(it->second);
+      auto const new_score = compute_bidi_conversion_score(it->second);
+      if (old_score != new_score) {
+        bidi_conversion_score_cache[it->second] = new_score; // Replace the old score with the new one.
+        bidi_conversion_sorted_scores.erase({old_score, it->second}); // Remove the old score from the sorted scores.
+        bidi_conversion_sorted_scores.emplace(new_score, it->second); // Add the new score to the sorted scores.
+      }
     }
     auto end_range = bidi_vertex_to_unvisited_path_index.equal_range(end_vertex);
     for (auto it = end_range.first; it != end_range.second; ++it) {
-      bidi_conversion_score_cache[it->second] = compute_bidi_conversion_score(it->second);
+      auto const old_score = bidi_conversion_score_cache.at(it->second);
+      auto const new_score = compute_bidi_conversion_score(it->second);
+      if (old_score != new_score) {
+        bidi_conversion_score_cache[it->second] = new_score; // Replace the old score with the new one.
+        bidi_conversion_sorted_scores.erase({old_score, it->second}); // Remove the old score from the sorted scores.
+        bidi_conversion_sorted_scores.emplace(new_score, it->second); // Add the new score to the sorted scores.
+      }
     }
   }
   auto& get_all_vertices() const {
@@ -233,14 +255,16 @@ class path_manager {
                       &end_vertex_to_unvisited_path_index,
                       &bidi_vertex_to_unvisited_path_index}) {
       for (auto& vertex : {path.front(), path.back()}) {
-        auto range = map->equal_range(vertex);
-        for (auto it = range.first; it != range.second; it++) {
-          if (it->second.path_index == index_and_side.path_index) {
-            path_and_direction const to_erase = it->second; // Save value before iterator invalidation.
-            map->erase(it);
+        auto vertex_range = map->equal_range(vertex);
+        for (auto vertex_it = vertex_range.first; vertex_it != vertex_range.second; vertex_it++) {
+          if (vertex_it->second.path_index == index_and_side.path_index) {
+            path_and_direction const to_erase = vertex_it->second; // Save value before iterator invalidation.
+            map->erase(vertex_it);
             // If it happens to be a bidi edge, remove it from the cache.
             if (map == &bidi_vertex_to_unvisited_path_index) {
+              auto const score = bidi_conversion_score_cache.at(to_erase);
               bidi_conversion_score_cache.erase(to_erase);
+              bidi_conversion_sorted_scores.erase({score, to_erase});
             }
             break;
           }
@@ -288,18 +312,7 @@ class path_manager {
 
   // Returns the bidi edge with the lowest conversion score. Call only when there is at least one bidi edge.
   path_and_direction choose_best_bidi_edge_to_convert() const {
-    auto it = bidi_vertex_to_unvisited_path_index.begin();
-    path_and_direction best = it->second;
-    std::pair<int, double> best_score = bidi_conversion_score_cache.at(best);
-    for (++it; it != bidi_vertex_to_unvisited_path_index.end(); ++it) {
-      path_and_direction candidate = it->second;
-      auto score = bidi_conversion_score_cache.at(candidate);
-      if (score < best_score) {
-        best_score = score;
-        best = candidate;
-      }
-    }
-    return best;
+    return bidi_conversion_sorted_scores.begin()->second;
   }
 
 private:
@@ -359,6 +372,7 @@ private:
   // Only the ones that have at least one potential edge leading out.
   std::set<point_t> all_vertices;
   mutable std::unordered_map<path_and_direction, std::pair<int, double>> bidi_conversion_score_cache;
+  mutable std::set<std::pair<std::pair<int, double>, path_and_direction>> bidi_conversion_sorted_scores;
 };
 
 /* This finds a minimal number of eulerian paths that cover the input.  The
