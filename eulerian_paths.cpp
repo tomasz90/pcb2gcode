@@ -278,6 +278,23 @@ class path_manager {
     return ret;
   }
 
+  // Returns the bidi edge with the lowest conversion score. Call only when there is at least one bidi edge.
+  path_and_direction choose_best_bidi_edge_to_convert() const {
+    auto it = bidi_vertex_to_unvisited_path_index.begin();
+    path_and_direction best = it->second;
+    std::pair<int, double> best_score = compute_bidi_conversion_score(best);
+    for (++it; it != bidi_vertex_to_unvisited_path_index.end(); ++it) {
+      path_and_direction candidate = it->second;
+      auto score = compute_bidi_conversion_score(candidate);
+      if (score < best_score) {
+        best_score = score;
+        best = candidate;
+      }
+    }
+    return best;
+  }
+
+private:
   // Score for choosing which bidi edge to convert to directional next. Lower is better.
   std::pair<int, double> compute_bidi_conversion_score(path_and_direction bidi_edge) const {
     {
@@ -411,19 +428,8 @@ class eulerian_paths {
         // directional edges as possible and there are no bidi edges left.
         break;
       }
-      // There are still some bidi edges left.
-      // Pick a bidi edge that has the best score from an edge already in there.
-      // Score is how unbalanced this would cause the graph to be and then angle.  Lowest is best.
-      std::pair<int, double> best_score(std::numeric_limits<int>::max(), std::numeric_limits<double>::max());
-      path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
-      for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
-        auto const& bidi_edge = bidi_edge_and_path.second;
-        auto const score = paths.compute_bidi_conversion_score(bidi_edge);
-        if (score < best_score) {
-          best_score = score;
-          best_path_index_and_side = bidi_edge;
-        }
-      }
+      // There are still some bidi edges left. Pick the one with the best conversion score.
+      path_and_direction best_path_index_and_side = paths.choose_best_bidi_edge_to_convert();
       paths.bidi_to_directional(best_path_index_and_side, false);
       // The endpoints of the bidi edge need to be re-examined.
       vertices_to_examine.insert(paths.get_front(best_path_index_and_side));
