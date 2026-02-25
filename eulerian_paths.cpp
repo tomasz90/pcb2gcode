@@ -332,6 +332,8 @@ class eulerian_paths {
           auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
           auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
           auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
+          auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
+                                 std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
           // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
           // at each vertex.
           auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
@@ -341,8 +343,6 @@ class eulerian_paths {
             auto const &p1 = paths.get_point(option_edge, 0);
             auto const &p2 = paths.get_point(option_edge, 1);
             auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
-                                   std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
             auto const score = std::make_pair(imbalance, cosine_of_angle);
             // Lowest is best.
             if (score < best_score) {
@@ -358,8 +358,6 @@ class eulerian_paths {
             auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
             auto const &p2 = paths.get_point(bidi_edge, 1);
             auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
-                                   std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
             auto const score = std::make_pair(imbalance, cosine_of_angle);
             // Lowest is best.
             if (score < best_score) {
