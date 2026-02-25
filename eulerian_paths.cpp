@@ -319,61 +319,63 @@ class eulerian_paths {
         // Remove the vertex from the set of vertices to examine.
         vertices_to_examine.erase(vertex);
       }
-      if (paths.get_bidi_vertex_to_unvisited_path_index().size() > 0) {
-        // We've examined all vertices and converted as many bidi edges to directional edges as possible
-        // but there are still some bidi edges left.
-        // Pick a bidi edge that has the best score from an edge already in there.
-        // Score is how unbalanced this would cause the graph to be and then angle.  Lowest is best.
-        std::pair<int, double> best_score(std::numeric_limits<int>::max(), std::numeric_limits<double>::max());
-        path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
-        for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
-          auto const& bidi_edge = bidi_edge_and_path.second;
-          auto const out_edges_at_end = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
-          auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
-          auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-          auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-          auto const imbalance = (in_edges_at_end < out_edges_at_end ? 0 : 1) +
-                                 (out_edges_at_start < in_edges_at_start ? 0 : 1);
-          // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
-          // at each vertex.
-          auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
-          double best_start_cosine = 1;
-          for (auto option = start_options.first; option != start_options.second; option++) {
-            auto const& option_edge = option->second;
-            auto const &p0 = paths.get_point(bidi_edge, -2);
-            auto const &p1 = paths.get_point(option_edge, 0);
-            auto const &p2 = paths.get_point(option_edge, 1);
-            auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            // Lowest is best.
-            if (cosine_of_angle < best_start_cosine) {
-              best_start_cosine = cosine_of_angle;
-            }
-          }
-          // Find everything that ends at the start of bidi_edge_path.
-          auto const end_options = paths.get_end_vertex_to_unvisited_path_index().equal_range(paths.get_front(bidi_edge));
-          double best_end_cosine = 1;
-          for (auto option = end_options.first; option != end_options.second; option++) {
-            auto const& option_edge = option->second;
-            auto const &p0 = paths.get_point(option_edge, 1); // The point one away from vertex.
-            auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
-            auto const &p2 = paths.get_point(bidi_edge, 1);
-            auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            if (cosine_of_angle < best_end_cosine) {
-              best_end_cosine = cosine_of_angle;
-            }
-          }
-          auto const score = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+      if (paths.get_bidi_vertex_to_unvisited_path_index().size() == 0) {
+        // We've examined all vertices and converted as many bidi edges to
+        // directional edges as possible and there are no bidi edges left.
+        break;
+      }
+      // There are still some bidi edges left.
+      // Pick a bidi edge that has the best score from an edge already in there.
+      // Score is how unbalanced this would cause the graph to be and then angle.  Lowest is best.
+      std::pair<int, double> best_score(std::numeric_limits<int>::max(), std::numeric_limits<double>::max());
+      path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
+      for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
+        auto const& bidi_edge = bidi_edge_and_path.second;
+        auto const out_edges_at_end = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
+        auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
+        auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
+        auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
+        auto const imbalance = (in_edges_at_end < out_edges_at_end ? 0 : 1) +
+                                (out_edges_at_start < in_edges_at_start ? 0 : 1);
+        // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
+        // at each vertex.
+        auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
+        double best_start_cosine = 1;
+        for (auto option = start_options.first; option != start_options.second; option++) {
+          auto const& option_edge = option->second;
+          auto const &p0 = paths.get_point(bidi_edge, -2);
+          auto const &p1 = paths.get_point(option_edge, 0);
+          auto const &p2 = paths.get_point(option_edge, 1);
+          auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
           // Lowest is best.
-          if (score < best_score) {
-            best_score = score;
-            best_path_index_and_side = bidi_edge;
+          if (cosine_of_angle < best_start_cosine) {
+            best_start_cosine = cosine_of_angle;
           }
         }
-        paths.bidi_to_directional(best_path_index_and_side, false);
-        // The endpoints of the bidi edge need to be re-examined.
-        vertices_to_examine.insert(paths.get_front(best_path_index_and_side));
-        vertices_to_examine.insert(paths.get_back(best_path_index_and_side));
+        // Find everything that ends at the start of bidi_edge_path.
+        auto const end_options = paths.get_end_vertex_to_unvisited_path_index().equal_range(paths.get_front(bidi_edge));
+        double best_end_cosine = 1;
+        for (auto option = end_options.first; option != end_options.second; option++) {
+          auto const& option_edge = option->second;
+          auto const &p0 = paths.get_point(option_edge, 1); // The point one away from vertex.
+          auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
+          auto const &p2 = paths.get_point(bidi_edge, 1);
+          auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
+          if (cosine_of_angle < best_end_cosine) {
+            best_end_cosine = cosine_of_angle;
+          }
+        }
+        auto const score = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+        // Lowest is best.
+        if (score < best_score) {
+          best_score = score;
+          best_path_index_and_side = bidi_edge;
+        }
       }
+      paths.bidi_to_directional(best_path_index_and_side, false);
+      // The endpoints of the bidi edge need to be re-examined.
+      vertices_to_examine.insert(paths.get_front(best_path_index_and_side));
+      vertices_to_examine.insert(paths.get_back(best_path_index_and_side));
     }
 
     // All edges are now directional.
