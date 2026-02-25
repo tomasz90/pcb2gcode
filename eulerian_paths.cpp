@@ -3,6 +3,7 @@
 #include <vector>
 #include <utility>
 #include <unordered_set>
+#include <unordered_map>
 #include <cmath>
 
 #include "segmentize.hpp"
@@ -194,6 +195,16 @@ class path_manager {
     auto const end_vertex = get_back(index_and_side);
     start_vertex_to_unvisited_path_index.emplace(start_vertex, path_and_direction(index_and_side.path_index, index_and_side.side));
     end_vertex_to_unvisited_path_index.emplace(end_vertex, path_and_direction(index_and_side.path_index, !index_and_side.side));
+    // Converting an edge from bidi to directional invalidates cached scores for all bidi edges
+    // that start or end at the endpoints of the converted edge.
+    auto start_range = bidi_vertex_to_unvisited_path_index.equal_range(start_vertex);
+    for (auto it = start_range.first; it != start_range.second; ++it) {
+      bidi_conversion_score_cache.erase(it->second);
+    }
+    auto end_range = bidi_vertex_to_unvisited_path_index.equal_range(end_vertex);
+    for (auto it = end_range.first; it != end_range.second; ++it) {
+      bidi_conversion_score_cache.erase(it->second);
+    }
   }
   auto& get_all_vertices() const {
     return all_vertices;
@@ -269,6 +280,12 @@ class path_manager {
 
   // Score for choosing which bidi edge to convert to directional next. Lower is better.
   std::pair<int, double> compute_bidi_conversion_score(path_and_direction bidi_edge) const {
+    {
+      auto it = bidi_conversion_score_cache.find(bidi_edge);
+      if (it != bidi_conversion_score_cache.end()) {
+        return it->second;
+      }
+    }
     auto const out_edges_at_end = start_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
     auto const in_edges_at_end = end_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
     auto const in_edges_at_start = end_vertex_to_unvisited_path_index.count(get_front(bidi_edge));
@@ -299,7 +316,9 @@ class path_manager {
         best_end_cosine = cosine_of_angle;
       }
     }
-    return std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+    auto const result = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+    bidi_conversion_score_cache[bidi_edge] = result;
+    return result;
   }
 
 private:
@@ -321,6 +340,7 @@ private:
   std::multimap<point_t, path_and_direction> end_vertex_to_unvisited_path_index;
   // Only the ones that have at least one potential edge leading out.
   std::set<point_t> all_vertices;
+  mutable std::unordered_map<path_and_direction, std::pair<int, double>> bidi_conversion_score_cache;
 };
 
 /* This finds a minimal number of eulerian paths that cover the input.  The
