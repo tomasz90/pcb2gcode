@@ -236,7 +236,12 @@ class path_manager {
         auto range = map->equal_range(vertex);
         for (auto it = range.first; it != range.second; it++) {
           if (it->second.path_index == index_and_side.path_index) {
+            path_and_direction const to_erase = it->second; // Save value before iterator invalidation.
             map->erase(it);
+            // If it happens to be a bidi edge, remove it from the cache.
+            if (map == &bidi_vertex_to_unvisited_path_index) {
+              bidi_conversion_score_cache.erase(to_erase);
+            }
             break;
           }
         }
