@@ -3,6 +3,7 @@
 #include <vector>
 #include <utility>
 #include <unordered_set>
+#include <cmath>
 
 #include "segmentize.hpp"
 #include "eulerian_paths.hpp"
@@ -124,6 +125,36 @@ class linestring_iterator {
   boost::variant<typename linestring_t::const_iterator, typename linestring_t::const_reverse_iterator> it;
 };
 
+template <typename point_t>
+double get_cosine_of_angle_impl(const point_t& p0, const point_t& p1, const point_t& p2) {
+  auto delta_x10 = p0.x() - p1.x();
+  auto delta_y10 = p0.y() - p1.y();
+  auto delta_x12 = p2.x() - p1.x();
+  auto delta_y12 = p2.y() - p1.y();
+  auto length_product = std::sqrt((delta_x10*delta_x10 + delta_y10*delta_y10)) * std::sqrt((delta_x12*delta_x12 + delta_y12*delta_y12));
+  auto dot_product = (delta_x10*delta_x12) + (delta_y10*delta_y12);
+  return dot_product/length_product;
+}
+
+double get_cosine_of_angle_impl(const int& p0, const int& p1, const int& p2) {
+  double ret;
+  if (p0 == p1 || p1 == p2) {
+    ret = 0;  // Undefined.
+  } else if (p0 < p1 && p1 < p2) {
+    ret = -1; // Straight line.
+  } else if (p0 > p1 && p1 > p2) {
+    ret = -1; // Straight line.
+  } else {
+    ret = 1; // Angle 0
+  }
+  return ret;
+}
+
+template <typename point_t>
+double get_cosine_of_angle(const point_t& p0, const point_t& p1, const point_t& p2) {
+  return get_cosine_of_angle_impl(p0, p1, p2);
+}
+
 /* This class holds on to all the paths and uses std::multimap internally to
  * make it quick to look up which paths extend from a given vertex and in which
  * direction. */
@@ -235,6 +266,42 @@ class path_manager {
     }
     return ret;
   }
+
+  // Score for choosing which bidi edge to convert to directional next. Lower is better.
+  std::pair<int, double> compute_bidi_conversion_score(path_and_direction bidi_edge) const {
+    auto const out_edges_at_end = start_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
+    auto const in_edges_at_end = end_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
+    auto const in_edges_at_start = end_vertex_to_unvisited_path_index.count(get_front(bidi_edge));
+    auto const out_edges_at_start = start_vertex_to_unvisited_path_index.count(get_front(bidi_edge));
+    auto const imbalance = (in_edges_at_end < out_edges_at_end ? 0 : 1) +
+                           (out_edges_at_start < in_edges_at_start ? 0 : 1);
+    double best_start_cosine = 1;
+    auto start_range = start_vertex_to_unvisited_path_index.equal_range(get_back(bidi_edge));
+    for (auto it = start_range.first; it != start_range.second; ++it) {
+      auto const& option_edge = it->second;
+      auto const& p0 = get_point(bidi_edge, -2);
+      auto const& p1 = get_point(option_edge, 0);
+      auto const& p2 = get_point(option_edge, 1);
+      auto const cosine_of_angle = get_cosine_of_angle(p0, p1, p2);
+      if (cosine_of_angle < best_start_cosine) {
+        best_start_cosine = cosine_of_angle;
+      }
+    }
+    double best_end_cosine = 1;
+    auto end_range = end_vertex_to_unvisited_path_index.equal_range(get_front(bidi_edge));
+    for (auto it = end_range.first; it != end_range.second; ++it) {
+      auto const& option_edge = it->second;
+      auto const& p0 = get_point(option_edge, 1);
+      auto const& p1 = get_point(option_edge, 0);
+      auto const& p2 = get_point(bidi_edge, 1);
+      auto const cosine_of_angle = get_cosine_of_angle(p0, p1, p2);
+      if (cosine_of_angle < best_end_cosine) {
+        best_end_cosine = cosine_of_angle;
+      }
+    }
+    return std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+  }
+
 private:
   std::vector<std::pair<linestring_t, bool>> const& paths;
   // Create a map from vertex to each path that start at that vertex.
@@ -331,42 +398,7 @@ class eulerian_paths {
       path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
       for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
         auto const& bidi_edge = bidi_edge_and_path.second;
-        auto const out_edges_at_end = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
-        auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
-        auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-        auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-        auto const imbalance = (in_edges_at_end < out_edges_at_end ? 0 : 1) +
-                                (out_edges_at_start < in_edges_at_start ? 0 : 1);
-        // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
-        // at each vertex.
-        auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
-        double best_start_cosine = 1;
-        for (auto option = start_options.first; option != start_options.second; option++) {
-          auto const& option_edge = option->second;
-          auto const &p0 = paths.get_point(bidi_edge, -2);
-          auto const &p1 = paths.get_point(option_edge, 0);
-          auto const &p2 = paths.get_point(option_edge, 1);
-          auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-          // Lowest is best.
-          if (cosine_of_angle < best_start_cosine) {
-            best_start_cosine = cosine_of_angle;
-          }
-        }
-        // Find everything that ends at the start of bidi_edge_path.
-        auto const end_options = paths.get_end_vertex_to_unvisited_path_index().equal_range(paths.get_front(bidi_edge));
-        double best_end_cosine = 1;
-        for (auto option = end_options.first; option != end_options.second; option++) {
-          auto const& option_edge = option->second;
-          auto const &p0 = paths.get_point(option_edge, 1); // The point one away from vertex.
-          auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
-          auto const &p2 = paths.get_point(bidi_edge, 1);
-          auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-          if (cosine_of_angle < best_end_cosine) {
-            best_end_cosine = cosine_of_angle;
-          }
-        }
-        auto const score = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
-        // Lowest is best.
+        auto const score = paths.compute_bidi_conversion_score(bidi_edge);
         if (score < best_score) {
           best_score = score;
           best_path_index_and_side = bidi_edge;
@@ -425,36 +457,6 @@ class eulerian_paths {
     auto out_edges = paths.get_start_vertex_to_unvisited_path_index().count(vertex);
     auto in_edges = paths.get_end_vertex_to_unvisited_path_index().count(vertex);
     return out_edges > in_edges;
-  }
-
-  template <typename p_t>
-  double get_cosine_of_angle(const point_t& p0, const point_t& p1, const point_t& p2, identity<p_t>) {
-    auto delta_x10 = p0.x() - p1.x();
-    auto delta_y10 = p0.y() - p1.y();
-    auto delta_x12 = p2.x() - p1.x();
-    auto delta_y12 = p2.y() - p1.y();
-    auto length_product = sqrt((delta_x10*delta_x10 + delta_y10*delta_y10)) * sqrt((delta_x12*delta_x12 + delta_y12*delta_y12));
-    auto dot_product = (delta_x10*delta_x12) + (delta_y10*delta_y12);
-    return dot_product/length_product;
-  }
-
-  double get_cosine_of_angle(const int& p0, const int& p1, const int& p2, identity<int>) {
-    double ret;
-    if (p0 == p1 || p1 == p2) {
-      ret = 0;  // Undefined.
-    } else if (p0 < p1 && p1 < p2) {
-      ret = -1; // Straight line.
-    } else if (p0 > p1 && p1 > p2) {
-      ret = -1; // Straight line.
-    } else {
-      ret = 1; // Angle 0
-    }
-    return ret;
-  }
-
-  template <typename p_t>
-  double get_cosine_of_angle(const p_t& p0, const p_t& p1, const p_t& p2) {
-    return get_cosine_of_angle(p0, p1, p2, identity<p_t>());
   }
 
   // Higher score is better.
