@@ -337,33 +337,36 @@ class eulerian_paths {
           // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
           // at each vertex.
           auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
+          double best_start_cosine = 1;
           for (auto option = start_options.first; option != start_options.second; option++) {
             auto const& option_edge = option->second;
             auto const &p0 = paths.get_point(bidi_edge, -2);
             auto const &p1 = paths.get_point(option_edge, 0);
             auto const &p2 = paths.get_point(option_edge, 1);
             auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            auto const score = std::make_pair(imbalance, cosine_of_angle);
             // Lowest is best.
-            if (score < best_score) {
-              best_score = score;
-              best_path_index_and_side = bidi_edge;
+            if (cosine_of_angle < best_start_cosine) {
+              best_start_cosine = cosine_of_angle;
             }
           }
           // Find everything that ends at the start of bidi_edge_path.
           auto const end_options = paths.get_end_vertex_to_unvisited_path_index().equal_range(paths.get_front(bidi_edge));
+          double best_end_cosine = 1;
           for (auto option = end_options.first; option != end_options.second; option++) {
             auto const& option_edge = option->second;
             auto const &p0 = paths.get_point(option_edge, 1); // The point one away from vertex.
             auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
             auto const &p2 = paths.get_point(bidi_edge, 1);
             auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            auto const score = std::make_pair(imbalance, cosine_of_angle);
-            // Lowest is best.
-            if (score < best_score) {
-              best_score = score;
-              best_path_index_and_side = bidi_edge;
+            if (cosine_of_angle < best_end_cosine) {
+              best_end_cosine = cosine_of_angle;
             }
+          }
+          auto const score = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+          // Lowest is best.
+          if (score < best_score) {
+            best_score = score;
+            best_path_index_and_side = bidi_edge;
           }
         }
         paths.bidi_to_directional(best_path_index_and_side, false);
