@@ -324,7 +324,7 @@ class eulerian_paths {
         // but there are still some bidi edges left.
         // Pick a bidi edge that has the best score from an edge already in there.
         // Score is how unbalanced this would cause the graph to be and then angle.  Lowest is best.
-        std::pair<long, double> best_score(std::numeric_limits<long>::max(), std::numeric_limits<double>::max());
+        std::pair<int, double> best_score(std::numeric_limits<int>::max(), std::numeric_limits<double>::max());
         path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
         for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
           auto const& bidi_edge = bidi_edge_and_path.second;
@@ -332,8 +332,8 @@ class eulerian_paths {
           auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
           auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
           auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-          auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
-                                 std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
+          auto const imbalance = (in_edges_at_end < out_edges_at_end ? 0 : 1) +
+                                 (out_edges_at_start < in_edges_at_start ? 0 : 1);
           // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
           // at each vertex.
           auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
