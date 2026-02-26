@@ -36,9 +36,6 @@ using std::vector;
 #include <sstream>
 using std::stringstream;
 
-#include <memory>
-using std::shared_ptr;
-
 #include <numeric>
 #include <iomanip>
 using std::setprecision;
@@ -244,18 +241,18 @@ linestring_type_fp ExcellonProcessor::line_to_holes(const linestring_type_fp& li
  */
 /******************************************************************************/
 void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<string>& of_name,
-                                   shared_ptr<Driller> driller, bool onedrill,
+                                   Driller const& driller, bool onedrill,
                                    bool nog81, bool nom6, bool zchange_absolute) {
     stringstream zchange;
 
     cout << "Exporting drill... ";
 
-    zchange << setprecision(3) << fixed << driller->zchange * cfactor;
+    zchange << setprecision(3) << fixed << driller.zchange * cfactor;
 
     tiling->setGCodeEnd((zchange_absolute ? "G53 " : "") + string("G00 Z") + zchange.str() +
                          " ( All done -- retract )\n" + postamble_ext +
                          "\nM5      (Spindle off.)\nG04 P" +
-                         to_string(driller->spindown_time) +
+                         to_string(driller.spindown_time) +
                         "\nM9      (Coolant off.)\n"
                          "M2      (Program end.)\n\n");
 
@@ -301,7 +298,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
 
     of << preamble_ext;        //insert external preamble file
     of << preamble;            //insert internal preamble
-    of << "G00 S" << left << driller->speed << "     (RPM spindle speed.)\n" << "\n";
+    of << "G00 S" << left << driller.speed << "     (RPM spindle speed.)\n" << "\n";
 
     //tiling->header( of );     // See TODO #2
 
@@ -310,23 +307,23 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
         if (zchange_absolute) {
             of << "G53 ";
         }
-        of << "G00 Z" << driller->zchange * cfactor << " (Retract)\n" << "T"
+        of << "G00 Z" << driller.zchange * cfactor << " (Retract)\n" << "T"
            << hole.first << "\n" << "M5      (Spindle stop.)\n"
-           << "G04 P" << driller->spindown_time
+           << "G04 P" << driller.spindown_time
            << "\n(MSG, Change tool bit to drill size "
            << drill_to_string(bit) << ")\n"
            << (nom6?"":"M6      (Tool change.)\n")
            << "M0      (Temporary machine stop.)\n"
            << "M3      (Spindle on clockwise.)\n"
-           << "G0 Z" << driller->zsafe * cfactor << "\n"
-           << "G04 P" << driller->spinup_time << "\n\n";
+           << "G0 Z" << driller.zsafe * cfactor << "\n"
+           << "G04 P" << driller.spinup_time << "\n\n";
 
         if( nog81 )
-            of << "G1 F" << driller->feed * cfactor << '\n';
+            of << "G1 F" << driller.feed * cfactor << '\n';
         else
         {
-            of << "G81 R" << driller->zsafe * cfactor << " Z"
-               << driller->zwork * cfactor << " F" << driller->feed * cfactor << " ";
+            of << "G81 R" << driller.zsafe * cfactor << " Z"
+               << driller.zwork * cfactor << " F" << driller.feed * cfactor << " ";
         }
 
         double drill_diameter = bit.unit == "mm" ? bit.diameter / 25.4 : bit.diameter;
@@ -347,8 +344,8 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
                         {
                             of << "G0 X" << ( ( get_xvalue(x) - xoffsetTot ) * cfactor)
                                <<   " Y" << ( ( get_yvalue(y) - yoffsetTot ) * cfactor) << "\n";
-                            of << "G1 Z" << driller->zwork * cfactor << '\n';
-                            of << "G1 Z" << driller->zsafe * cfactor << '\n';
+                            of << "G1 Z" << driller.zwork * cfactor << '\n';
+                            of << "G1 Z" << driller.zsafe * cfactor << '\n';
                         }
                         else
                         {
@@ -380,19 +377,17 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
 /******************************************************************************/
 bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start_y,
                                  double stop_x, double stop_y,
-                                 shared_ptr<Cutter> cutter,
+                                 Cutter const& cutter,
                                  double holediameter)
 {
-
-    g_assert(cutter);
-    double cutdiameter = cutter->tool_diameter;
+    double cutdiameter = cutter.tool_diameter;
     bool slot = (start_x != stop_x ||
                  start_y != stop_y);
 
     // Find the largest z_step that divides 0 through z_work into
     // evenly sized passes such that each pass is at most
     // cutter->stepsize in depth.
-    int stepcount = (int) ceil(std::abs(cutter->zwork / cutter->stepsize));
+    int stepcount = (int) ceil(std::abs(cutter.zwork / cutter.stepsize));
 
     double delta_x = stop_x - start_x;
     double delta_y = stop_y - start_y;
@@ -402,18 +397,18 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
         of << "G0 X" << start_x * cfactor << " Y" << start_y * cfactor << '\n';
         if (slot) {
             // Start one step above Z0 for optimal entry
-            of << "G1 Z" << -1.0/stepcount * cutter->zwork * cfactor
-               << " F" << cutter->vertfeed * cfactor << '\n';
+            of << "G1 Z" << -1.0/stepcount * cutter.zwork * cfactor
+               << " F" << cutter.vertfeed * cfactor << '\n';
 
             // Is there enough room for material evacuation?
             if (distance > 0.3 * cutdiameter) {
-                of << "G1 F" << cutter->feed * cfactor << '\n';
+                of << "G1 F" << cutter.feed * cfactor << '\n';
             }
 
-            double zhalfstep = cutter->zwork / stepcount / 2;
+            double zhalfstep = cutter.zwork / stepcount / 2;
             for (int current_step = -1; true; current_step++) {
                 // current_step == stepcount is for the bottom pass, so z needs to stay the same
-                double z = double(std::min(stepcount, current_step+1))/stepcount * cutter->zwork;
+                double z = double(std::min(stepcount, current_step+1))/stepcount * cutter.zwork;
                 of << "G1 X" << stop_x * cfactor
                    << " Y" << stop_y * cfactor;
                 if(stepcount != current_step) {
@@ -431,11 +426,11 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
                    << '\n';
             }
         } else {
-            of << "G1 Z" << cutter->zwork * cfactor
-               << " F" << cutter->vertfeed * cfactor << '\n';
+            of << "G1 Z" << cutter.zwork * cfactor
+               << " F" << cutter.vertfeed * cfactor << '\n';
         }
-        of << "G1 Z" << cutter->zsafe * cfactor
-           << " F" << cutter->vertfeed * cfactor << "\n\n";
+        of << "G1 Z" << cutter.zsafe * cfactor
+           << " F" << cutter.vertfeed * cfactor << "\n\n";
 
         return false;
     } else {
@@ -482,7 +477,7 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
         double dist_hcircle = boost::math::constants::pi<double>() * millr;
         if (slot) {
           // How much to step down per pass
-          double zstep = cutter->zwork / stepcount;
+          double zstep = cutter.zwork / stepcount;
           double zstep_hcircle = zstep * dist_hcircle / (dist_hcircle + distance) / 2;
           double zstep_line    = zstep / 2 - zstep_hcircle;
           // How much to substract from the final z depth of each pass
@@ -492,18 +487,18 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
         }
 
         // Start one step above Z0 for optimal entry
-        of << "G1 Z" << -1.0/stepcount * cutter->zwork * cfactor
-           << " F" << cutter->vertfeed * cfactor << '\n';
+        of << "G1 Z" << -1.0/stepcount * cutter.zwork * cfactor
+           << " F" << cutter.vertfeed * cfactor << '\n';
 
         // Is hole is big enough for horizontal speed?
         if (holediameter + distance > 1.1 * cutdiameter) {
-          of << "G1 F" << cutter->feed * cfactor << '\n';
+          of << "G1 F" << cutter.feed * cfactor << '\n';
         }
 
         string arc_gcode = mill_feed_direction == MillFeedDirection::CLIMB ? "G3" : "G2";
         for (int current_step = -1; current_step <= stepcount; current_step++) {
           // current_step == stepcount is for the bottom circle for helix, so z needs to stay the same
-          double z = double(std::min(stepcount, current_step+1))/stepcount * cutter->zwork;
+          double z = double(std::min(stepcount, current_step+1))/stepcount * cutter.zwork;
           if (!slot) {
             // Just drill a full-circle.
             of << arc_gcode
@@ -549,8 +544,8 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
           }
         }
 
-        of << "G1 Z" << cutter->zsafe * cfactor
-           << " F" << cutter->vertfeed * cfactor << "\n\n";
+        of << "G1 Z" << cutter.zsafe * cfactor
+           << " F" << cutter.vertfeed * cfactor << "\n\n";
 
         return true;
     }
@@ -558,17 +553,17 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
 
 // milldrill holes
 void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<string>& of_name,
-                                   shared_ptr<Cutter> target, bool nom6, bool zchange_absolute) {
+                                   Cutter const& target, bool nom6, bool zchange_absolute) {
     unsigned int badHoles = 0;
     stringstream zchange;
 
     cout << "Exporting milldrill... " << flush;
 
-    zchange << setprecision(6) << fixed << target->zchange * cfactor;
+    zchange << setprecision(6) << fixed << target.zchange * cfactor;
     tiling->setGCodeEnd((zchange_absolute ? "G53 " : "") + string("G00 Z") + zchange.str() +
                         " ( All done -- retract )\n" + postamble_ext +
                         "\nM5      (Spindle off.)\nG04 P" +
-                        to_string(target->spindown_time) +
+                        to_string(target.spindown_time) +
                         "\nM9      (Coolant off.)\n"
                         "M2      (Program end.)\n\n");
 
@@ -602,7 +597,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
     of.setf(ios_base::fixed);      //write floating-point values in fixed-point notation
     of.precision(5);              //Set floating-point decimal precision
 
-    of << "( This file uses a mill head of " << (bMetricOutput ? (target->tool_diameter * 25.4) : target->tool_diameter)
+    of << "( This file uses a mill head of " << (bMetricOutput ? (target.tool_diameter * 25.4) : target.tool_diameter)
        << (bMetricOutput ? "mm" : "inch") << " to drill the " << holes.size()
        << " hole sizes. )" << "\n";
 
@@ -615,21 +610,21 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
 
     //preamble
     of << preamble_ext << preamble
-       << "S" << left << target->speed << "    (RPM spindle speed.)\n\n"
-       << "G01 F" << target->feed * cfactor << " (Feedrate)\n";
+       << "S" << left << target.speed << "    (RPM spindle speed.)\n\n"
+       << "G01 F" << target.feed * cfactor << " (Feedrate)\n";
     if (zchange_absolute) {
        of << "G53 ";
     }
-    of << "G00 Z" << target->zchange * cfactor << " (Retract to tool change height)\n"
+    of << "G00 Z" << target.zchange * cfactor << " (Retract to tool change height)\n"
        << "T" << (holes.size() > 0 ? (*holes.begin()).first : 0) << "\n"
        << "M5        (Spindle stop.)\n"
-       << "G04 P" << target->spindown_time << "\n"
-       << "(MSG, Change tool bit to drill size " << (bMetricOutput ? (target->tool_diameter * 25.4) : target->tool_diameter) << (bMetricOutput ? "mm" : "inch") << ")\n"
+       << "G04 P" << target.spindown_time << "\n"
+       << "(MSG, Change tool bit to drill size " << (bMetricOutput ? (target.tool_diameter * 25.4) : target.tool_diameter) << (bMetricOutput ? "mm" : "inch") << ")\n"
        << (nom6 ? "" : "M6        (Tool change.)\n")
        << "M0        (Temporary machine stop.)\n"
        << "M3        (Spindle on clockwise.)\n"
-       << "G04 P" << target->spinup_time << "\n"
-       << "G00 Z" << target->zsafe * cfactor << "\n\n";
+       << "G04 P" << target.spinup_time << "\n"
+       << "G00 Z" << target.zsafe * cfactor << "\n\n";
 
     tiling->header( of );
 
