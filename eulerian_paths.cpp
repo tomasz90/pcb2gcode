@@ -183,6 +183,9 @@ class path_manager {
         end_vertex_to_unvisited_path_index.emplace(end, path_and_direction(index, Side::back));
       }
     }
+    for (auto const& bidi_edge : bidi_vertex_to_unvisited_path_index) {
+      bidi_conversion_score_cache.emplace(bidi_edge.second, compute_bidi_conversion_score(bidi_edge.second));
+    }
   }
 
   void bidi_to_directional(path_and_direction index_and_side, bool flip) {
@@ -199,11 +202,11 @@ class path_manager {
     // that start or end at the endpoints of the converted edge.
     auto start_range = bidi_vertex_to_unvisited_path_index.equal_range(start_vertex);
     for (auto it = start_range.first; it != start_range.second; ++it) {
-      bidi_conversion_score_cache.erase(it->second);
+      bidi_conversion_score_cache[it->second] = compute_bidi_conversion_score(it->second);
     }
     auto end_range = bidi_vertex_to_unvisited_path_index.equal_range(end_vertex);
     for (auto it = end_range.first; it != end_range.second; ++it) {
-      bidi_conversion_score_cache.erase(it->second);
+      bidi_conversion_score_cache[it->second] = compute_bidi_conversion_score(it->second);
     }
   }
   auto& get_all_vertices() const {
@@ -282,10 +285,10 @@ class path_manager {
   path_and_direction choose_best_bidi_edge_to_convert() const {
     auto it = bidi_vertex_to_unvisited_path_index.begin();
     path_and_direction best = it->second;
-    std::pair<int, double> best_score = compute_bidi_conversion_score(best);
+    std::pair<int, double> best_score = bidi_conversion_score_cache.at(best);
     for (++it; it != bidi_vertex_to_unvisited_path_index.end(); ++it) {
       path_and_direction candidate = it->second;
-      auto score = compute_bidi_conversion_score(candidate);
+      auto score = bidi_conversion_score_cache.at(candidate);
       if (score < best_score) {
         best_score = score;
         best = candidate;
@@ -297,12 +300,6 @@ class path_manager {
 private:
   // Score for choosing which bidi edge to convert to directional next. Lower is better.
   std::pair<int, double> compute_bidi_conversion_score(path_and_direction bidi_edge) const {
-    {
-      auto it = bidi_conversion_score_cache.find(bidi_edge);
-      if (it != bidi_conversion_score_cache.end()) {
-        return it->second;
-      }
-    }
     auto const out_edges_at_end = start_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
     auto const in_edges_at_end = end_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
     auto const in_edges_at_start = end_vertex_to_unvisited_path_index.count(get_front(bidi_edge));
@@ -334,7 +331,6 @@ private:
       }
     }
     auto const result = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
-    bidi_conversion_score_cache[bidi_edge] = result;
     return result;
   }
 
