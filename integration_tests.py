@@ -329,13 +329,13 @@ class IntegrationTests(unittest.TestCase):
     shutil.rmtree(actual_output_path)
     return diff_text
 
-  def do_test_one(self, test_case, pcb2gcode_binary):
+  def do_test_one(self, test_case, pcb2gcode_binary, extra_args):
     test_prefix = os.path.join(test_case.input_path, "expected")
     cwd = os.path.dirname(pcb2gcode_binary)
     input_path = os.path.join(cwd, test_case.input_path)
     expected_output_path = os.path.join(cwd, test_case.input_path, "expected")
     print(colored("\nRunning test case:\n" + "\n".join("    %s=%s" % (k,v) for k,v in test_case._asdict().items()), attrs=["bold"]), file=sys.stderr)
-    diff_text = self.run_one_directory(input_path, pcb2gcode_binary, expected_output_path, test_prefix, test_case.args, test_case.exit_code)
+    diff_text = self.run_one_directory(input_path, pcb2gcode_binary, expected_output_path, test_prefix, test_case.args + extra_args, test_case.exit_code)
     self.assertFalse(bool(diff_text), 'Files don\'t match\n' + diff_text)
 
 def cmp(x,y):
@@ -358,13 +358,16 @@ if __name__ == '__main__':
                       help='path to pcb2gcode binary to run.  The tests are expected to be in subdirectories of the directory containing the binary.')
   parser.add_argument('--quick', action='store_true', default=False,
                       help='only run quick tests')
+  parser.add_argument('--extra-args', type=str, default="",
+                      help='extra arguments to pass to pcb2gcode')
   args = parser.parse_args()
   if args.tests:
     TEST_CASES = [t for t in TEST_CASES if re.search(args.tests, t.name)]
   pcb2gcode_binary = os.path.join(os.getcwd(), "pcb2gcode") if not args.pcb2gcode_binary else args.pcb2gcode_binary
+  extra_args = args.extra_args.split() if args.extra_args else []
   def add_test_case(t):
     def test_method(self):
-      self.do_test_one(t, pcb2gcode_binary)
+      self.do_test_one(t, pcb2gcode_binary, extra_args)
     setattr(IntegrationTests, 'test_' + t.name, test_method)
     test_method.__name__ = 'test_' + t.name
     test_method.__doc__ = str(test_case)

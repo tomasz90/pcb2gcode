@@ -20,16 +20,6 @@ AC_PROG_CXX
 AC_PROG_CC
 LT_INIT
 
-# If --enable-debug is not specified, set -DNDEBUG to turn off the asserts.
-AC_ARG_ENABLE([debug],
-  AS_HELP_STRING([--enable-debug], [enable debug mode (default is no)]),
-  [debug_enabled=$enableval],
-  [debug_enabled=no])
-
-AS_IF([test "x$debug_enabled" = "xno"], [
-  CPPFLAGS="$CPPFLAGS -DNDEBUG"
-])
-
 # Check for C++11
 AX_CXX_COMPILE_STDCXX_14
 
@@ -145,7 +135,6 @@ Configuration:
   CXXFLAGS:        $CXXFLAGS
   CPPFLAGS:        $CPPFLAGS
   LDFLAGS:         $LDFLAGS
-  Debug mode:      $enable_debug
 
 Install prefix:    $prefix
 ========================================

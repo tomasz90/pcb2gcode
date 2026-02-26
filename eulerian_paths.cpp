@@ -8,6 +8,7 @@
 
 #include "segmentize.hpp"
 #include "eulerian_paths.hpp"
+#include "options.hpp"
 
 namespace eulerian_paths {
 
@@ -696,7 +697,11 @@ template <typename point_t, typename linestring_t>
 std::vector<std::pair<linestring_t, bool>> get_eulerian_paths(const std::vector<std::pair<linestring_t, bool>>& paths) {
   auto const ret = eulerian_paths<point_t, linestring_t>(
       paths).get();
-  assert((check_eulerian_paths<point_t, linestring_t>(paths, ret)));
+  if (options::get_vm().count("sanity-checks")) {
+    if (!check_eulerian_paths<point_t, linestring_t>(paths, ret)) {
+      options::maybe_throw("Sanity checks failed", ERR_SANITY_CHECKS_FAILED);
+    }
+  }
   return ret;
 }
 
