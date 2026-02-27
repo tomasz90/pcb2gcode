@@ -123,7 +123,7 @@ void Board::createLayers()
     // board size calculated. create layers
     for (const auto& prepared_layer : prepared_layers) {
       // prepare the surface
-      shared_ptr<GerberImporter> importer = get<0>(prepared_layer.second);
+      GerberImporter const& importer = *get<0>(prepared_layer.second);
       const bool fill = fill_outline && prepared_layer.first == "outline";
 
       auto surface = make_shared<Surface_vectorial>(

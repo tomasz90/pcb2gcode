@@ -65,7 +65,7 @@ class Surface_vectorial: private boost::noncopyable {
   // The importer provides the path.  The tolerance is used for
   // removing some of the finer detail in the path, to save time on
   // processing.
-  void render(std::shared_ptr<GerberImporter> importer, double tolerance);
+  void render(GerberImporter const& importer, double tolerance);
 
   inline coordinate_type_fp get_width_in() {
     return bounding_box.max_corner().x() - bounding_box.min_corner().x();

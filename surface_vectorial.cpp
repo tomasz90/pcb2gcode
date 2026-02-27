@@ -95,8 +95,8 @@ Surface_vectorial::Surface_vectorial(const box_type_fp& bounding_box,
     invert_gerbers(invert_gerbers),
     render_paths_to_shapes(render_paths_to_shapes) {}
 
-void Surface_vectorial::render(shared_ptr<GerberImporter> importer, double tolerance) {
-  auto vectorial_surface_not_simplified = importer->render(fill, render_paths_to_shapes);
+void Surface_vectorial::render(GerberImporter const& importer, double tolerance) {
+  auto vectorial_surface_not_simplified = importer.render(fill, render_paths_to_shapes);
 
   if (bg::intersects(vectorial_surface_not_simplified.first)) {
     cerr << "\nWarning: Geometry of layer '" << name << "' is"
