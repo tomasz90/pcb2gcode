@@ -105,22 +105,20 @@ void Surface_vectorial::render(GerberImporter const& importer, double tolerance)
         " g-code output and/or fix your gerber files!\n";
   }
 
-  vectorial_surface = make_shared<
-      pair<multi_polygon_type_fp, map<coordinate_type_fp, multi_linestring_type_fp>>>();
   if (tolerance > 0) {
     //With a very small loss of precision we can reduce memory usage and processing time
-    bg::simplify(vectorial_surface_not_simplified.first, vectorial_surface->first, tolerance);
+    bg::simplify(vectorial_surface_not_simplified.first, vectorial_surface.first, tolerance);
   } else {
-    vectorial_surface->first.swap(vectorial_surface_not_simplified.first);
+    vectorial_surface.first.swap(vectorial_surface_not_simplified.first);
   }
   for (auto& diameter_and_path : vectorial_surface_not_simplified.second) {
-    vectorial_surface->second[diameter_and_path.first] = multi_linestring_type_fp();
+    vectorial_surface.second[diameter_and_path.first] = multi_linestring_type_fp();
     if (tolerance > 0) {
       bg::simplify(diameter_and_path.second,
-                   vectorial_surface->second[diameter_and_path.first],
+                   vectorial_surface.second[diameter_and_path.first],
                    tolerance);
     } else {
-      vectorial_surface->second[diameter_and_path.first].swap(diameter_and_path.second);
+      vectorial_surface.second[diameter_and_path.first].swap(diameter_and_path.second);
     }
   }
 }
@@ -210,9 +208,9 @@ void Surface_vectorial::write_svgs(const string& tool_suffix, coordinate_type_fp
     }
 
     if (find_contentions) {
-      if (trace_index < vectorial_surface->first.size()) {
+      if (trace_index < vectorial_surface.first.size()) {
         multi_polygon_type_fp temp =
-            bg_helpers::buffer(vectorial_surface->first.at(trace_index), tool_diameter/2 - tolerance);
+            bg_helpers::buffer(vectorial_surface.first.at(trace_index), tool_diameter/2 - tolerance);
         multi_linestring_type_fp temp2;
         for (const auto& ls_and_allow_reversal : new_trace_toolpath) {
           temp2.push_back(ls_and_allow_reversal.first);
@@ -233,8 +231,8 @@ void Surface_vectorial::write_svgs(const string& tool_suffix, coordinate_type_fp
         " and consider using a smaller milling bit.\n";
   }
   ConsistentRand::srand(1);
-  debug_image.add(vectorial_surface->first, 1, true);
-  for (const auto& diameter_and_path : vectorial_surface->second) {
+  debug_image.add(vectorial_surface.first, 1, true);
+  for (const auto& diameter_and_path : vectorial_surface.second) {
     debug_image.add(diameter_and_path.second, diameter_and_path.first, true);
   }
 }
@@ -794,8 +792,8 @@ vector<pair<linestring_type_fp, bool>> Surface_vectorial::get_single_toolpath(
     const bool do_voronoi = isolator ? isolator->voronoi : false;
 
     optional<polygon_type_fp> current_trace = boost::none;
-    if (trace_index < vectorial_surface->first.size()) {
-      current_trace.emplace(vectorial_surface->first.at(trace_index));
+    if (trace_index < vectorial_surface.first.size()) {
+      current_trace.emplace(vectorial_surface.first.at(trace_index));
     }
     const auto& current_voronoi = trace_index < voronoi.size() ? voronoi[trace_index] : thermal_holes[trace_index - voronoi.size()];
     const vector<multi_polygon_type_fp> polygons =
@@ -954,25 +952,25 @@ vector<pair<linestring_type_fp, bool>> Surface_vectorial::final_path_finder(
 // A bunch of pairs.  Each pair is the tool diameter followed by a vector of paths to mill.
 vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Surface_vectorial::get_toolpath(
     shared_ptr<RoutingMill> mill, bool mirror, bool ymirror) {
-  bg::unique(vectorial_surface->first);
-  for (auto& diameter_and_path : vectorial_surface->second) {
+  bg::unique(vectorial_surface.first);
+  for (auto& diameter_and_path : vectorial_surface.second) {
     bg::unique(diameter_and_path.second);
   }
   if (invert_gerbers) {
-    vectorial_surface->first = bounding_box - vectorial_surface->first;
+    vectorial_surface.first = bounding_box - vectorial_surface.first;
   }
   const auto tolerance = mill->tolerance;
   // Get the voronoi region for each trace.
-  voronoi = Voronoi::build_voronoi(vectorial_surface->first, bounding_box, tolerance);
+  voronoi = Voronoi::build_voronoi(vectorial_surface.first, bounding_box, tolerance);
 
   auto isolator = dynamic_pointer_cast<Isolator>(mill);
   if (isolator) {
     if (isolator->preserve_thermal_reliefs && isolator->voronoi) {
-      thermal_holes = find_thermal_reliefs(vectorial_surface->first, tolerance);
+      thermal_holes = find_thermal_reliefs(vectorial_surface.first, tolerance);
     }
     const auto tool_count = isolator->tool_diameters_and_overlap_widths.size();
     vector<pair<coordinate_type_fp, multi_linestring_type_fp>> results(tool_count);
-    const auto trace_count = vectorial_surface->first.size() + thermal_holes.size(); // Includes thermal holes.
+    const auto trace_count = vectorial_surface.first.size() + thermal_holes.size(); // Includes thermal holes.
     // One for each trace or thermal hole, including all prior tools.
     vector<multi_polygon_type_fp> already_milled(trace_count);
     for (size_t tool_index = 0; tool_index < tool_count; tool_index++) {
@@ -981,8 +979,8 @@ vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Surface_vectorial::ge
       vector<vector<pair<linestring_type_fp, bool>>> new_trace_toolpaths(trace_count);
 
       vector<multi_polygon_type_fp> keep_outs;
-      keep_outs.reserve(vectorial_surface->first.size());
-      for (const auto& poly : vectorial_surface->first) {
+      keep_outs.reserve(vectorial_surface.first.size());
+      for (const auto& poly : vectorial_surface.first) {
         keep_outs.push_back(bg_helpers::buffer(poly, tool_diameter/2 + isolator->offset));
       }
       const auto path_finding_surface = path_finding::PathFindingSurface(mask, sum(keep_outs), isolator->tolerance);
@@ -993,10 +991,10 @@ vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Surface_vectorial::ge
           // Don't force isolation.  By pretending that an area around
           // the trace is already milled, it will be removed from
           // consideration for milling.
-          if (trace_index < vectorial_surface->first.size()) {
+          if (trace_index < vectorial_surface.first.size()) {
             // This doesn't run for thermal holes.
             multi_polygon_type_fp temp =
-                bg_helpers::buffer(vectorial_surface->first.at(trace_index),
+                bg_helpers::buffer(vectorial_surface.first.at(trace_index),
                                    tool_diameter/2 + isolator->offset - tolerance);
             already_milled_shrunk = already_milled_shrunk + temp;
           }
@@ -1038,7 +1036,7 @@ vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Surface_vectorial::ge
       results[tool_index] = make_pair(tool_diameter, mirror_toolpath(combined_toolpath, mirror, ymirror));
     }
     // Now process any lines that need drawing.
-    for (const auto& diameter_and_paths : vectorial_surface->second) {
+    for (const auto& diameter_and_paths : vectorial_surface.second) {
       const auto& tool_diameter = diameter_and_paths.first;
       const auto& paths = diameter_and_paths.second;
       // Each linestring has a bool attached to it indicating if it is reversible.
@@ -1061,7 +1059,7 @@ vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Surface_vectorial::ge
   auto cutter = dynamic_pointer_cast<Cutter>(mill);
   if (cutter) {
     const auto path_finding_surface = path_finding::PathFindingSurface(multi_polygon_type_fp(), multi_polygon_type_fp(), cutter->tolerance);
-    const auto trace_count = vectorial_surface->first.size();
+    const auto trace_count = vectorial_surface.first.size();
     vector<vector<pair<linestring_type_fp, bool>>> new_trace_toolpaths(trace_count);
 
     for (size_t trace_index = 0; trace_index < trace_count; trace_index++) {
@@ -1094,8 +1092,8 @@ void Surface_vectorial::save_debug_image(string message)
     svg_writer debug_image(build_filename(outputdir, filename), bounding_box);
 
     ConsistentRand::srand(1);
-    debug_image.add(vectorial_surface->first, 1, true);
-    for (const auto& diameter_and_path : vectorial_surface->second) {
+    debug_image.add(vectorial_surface.first, 1, true);
+    for (const auto& diameter_and_path : vectorial_surface.second) {
       debug_image.add(diameter_and_path.second, diameter_and_path.first, true);
     }
 
@@ -1107,9 +1105,9 @@ void Surface_vectorial::enable_filling() {
 }
 
 void Surface_vectorial::add_mask(Surface_vectorial const& surface) {
-  mask = surface.vectorial_surface->first;
-  vectorial_surface->first = vectorial_surface->first & *mask;
-  for (auto& diameter_and_path : vectorial_surface->second) {
+  mask = surface.vectorial_surface.first;
+  vectorial_surface.first = vectorial_surface.first & *mask;
+  for (auto& diameter_and_path : vectorial_surface.second) {
     diameter_and_path.second = diameter_and_path.second & *mask;
   }
 }
