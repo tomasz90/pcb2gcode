@@ -59,14 +59,14 @@ double Board::get_width() {
   if (layers.size() < 1) {
     return 0;
   }
-  return layers.begin()->second->surface->get_width_in();
+  return layers.begin()->second->surface.get_width_in();
 }
 
 double Board::get_height() {
   if (layers.size() < 1) {
     return 0;
   }
-  return layers.begin()->second->surface->get_height_in();
+  return layers.begin()->second->surface.get_height_in();
 }
 
 void Board::prepareLayer(string layername, GerberImporter importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
@@ -126,17 +126,17 @@ void Board::createLayers()
       GerberImporter const& importer = get<0>(prepared_layer.second);
       const bool fill = fill_outline && prepared_layer.first == "outline";
 
-      auto surface = make_shared<Surface_vectorial>(
+      Surface_vectorial surface(
           bounding_box,
           prepared_layer.first, outputdir, tsp_2opt,
           mill_feed_direction, invert_gerbers,
           render_paths_to_shapes || (prepared_layer.first == "outline"));
       if (fill) {
-        surface->enable_filling();
+        surface.enable_filling();
       }
-      surface->render(importer, get<1>(prepared_layer.second)->optimise);
+      surface.render(importer, get<1>(prepared_layer.second)->optimise);
       auto layer = make_shared<Layer>(prepared_layer.first,
-                                      surface,
+                                      std::move(surface),
                                       get<1>(prepared_layer.second),
                                       get<2>(prepared_layer.second),
                                       get<3>(prepared_layer.second)); // see comment for prep_t in board.hpp
@@ -145,7 +145,7 @@ void Board::createLayers()
 
     // DEBUG output
     for (layer_t layer : layers) {
-      layer.second->surface->save_debug_image(string("original_") + layer.second->get_name());
+      layer.second->surface.save_debug_image(string("original_") + layer.second->get_name());
     }
 
     // mask layers with outline
@@ -157,7 +157,7 @@ void Board::createLayers()
       for (const auto& layer : layers) {
         if (layer.second != outline_layer) {
           layer.second->add_mask(outline_layer);
-          layer.second->surface->save_debug_image(string("masked_") + layer.second->get_name());
+          layer.second->surface.save_debug_image(string("masked_") + layer.second->get_name());
         }
       }
     }

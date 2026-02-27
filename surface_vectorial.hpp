@@ -31,7 +31,6 @@
 
 #include <memory>
 
-#include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 
 #include "mill.hpp"
@@ -44,7 +43,7 @@
 /*
  */
 /******************************************************************************/
-class Surface_vectorial: private boost::noncopyable {
+class Surface_vectorial {
  public:
   // This function returns a linestring that connects two points if possible.
   typedef std::function<boost::optional<linestring_type_fp>(const point_type_fp& start, const point_type_fp& end)> PathFinder;

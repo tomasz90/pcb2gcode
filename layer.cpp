@@ -40,13 +40,12 @@ using std::endl;
 /*
  */
 /******************************************************************************/
-Layer::Layer(const std::string& name, shared_ptr<Surface_vectorial> surface,
-             shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror)
+Layer::Layer(const std::string& name, Surface_vectorial&& surface,
+             shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) : surface(std::move(surface))
 {
     this->name = name;
     this->mirrored = backside;
     this->ymirrored = ymirror;
-    this->surface = surface;
     this->manufacturer = manufacturer;
 }
 
@@ -54,7 +53,7 @@ Layer::Layer(const std::string& name, shared_ptr<Surface_vectorial> surface,
 
 /******************************************************************************/
 vector<pair<coordinate_type_fp, multi_linestring_type_fp>> Layer::get_toolpaths() {
-  return surface->get_toolpath(manufacturer, mirrored, ymirrored);
+  return surface.get_toolpath(manufacturer, mirrored, ymirrored);
 }
 
 /******************************************************************************/
@@ -72,7 +71,7 @@ shared_ptr<RoutingMill> Layer::get_manufacturer()
 /******************************************************************************/
 void Layer::add_mask(shared_ptr<Layer> mask)
 {
-    surface->add_mask(*mask->surface);
+    surface.add_mask(mask->surface);
 }
 
 vector<size_t> Layer::get_bridges(linestring_type_fp& toolpath) {
