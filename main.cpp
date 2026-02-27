@@ -326,8 +326,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing drill... " << flush;
 
     if (vm.count("drill") > 0) {
-        try
-        {
+        try {
             point_type_fp min;
             point_type_fp max;
 
@@ -391,8 +390,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
 
             cout << "DONE. The board should be drilled from the " << ( workSide(vm, "drill") ? "FRONT" : "BACK" ) << " side.\n";
 
-        }
-        catch (const drill_exception& e) {
+        } catch (const drill_exception& e) {
           options::maybe_throw("ERROR: drill_exception", ERR_INVALIDPARAMETER);
         }
     } else {
@@ -400,7 +398,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     }
 
     if (!vm["no-export"].as<bool>()) {
-      auto exporter = make_shared<NGC_Exporter>(board);
+      auto exporter = make_shared<NGC_Exporter>(std::move(*board));
       exporter->add_header(PACKAGE_STRING);
 
       if (vm.count("preamble") || vm.count("preamble-text")) {
@@ -415,7 +413,6 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     }
 
     cout << "END." << endl;
-
 }
 
 int main(int argc, const char* argv[]) {

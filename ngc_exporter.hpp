@@ -41,9 +41,9 @@
 /*
  */
 /******************************************************************************/
-class NGC_Exporter: private boost::noncopyable {
+class NGC_Exporter {
 public:
-    NGC_Exporter(std::shared_ptr<Board> board);
+    NGC_Exporter(Board&& board);
     void add_header(std::string);
     void export_all(boost::program_options::variables_map&);
     void set_preamble(std::string);
@@ -56,7 +56,7 @@ protected:
   void isolation_milling(std::ofstream& of, RoutingMill const& mill, const linestring_type_fp& path,
                          boost::optional<autoleveller>& leveller, const double xoffsetTot, const double yoffsetTot);
 
-    std::shared_ptr<Board> board;
+    Board board;
     std::vector<std::string> header;
     std::string preamble;        //Preamble from command line (user file)
     std::string postamble;       //Postamble from command line (user file)

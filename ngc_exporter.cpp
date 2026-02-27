@@ -55,8 +55,8 @@ using boost::format;
 
 #include "units.hpp"
 
-NGC_Exporter::NGC_Exporter(shared_ptr<Board> board)
-    : board(board), ocodes(1), globalVars(100) {}
+NGC_Exporter::NGC_Exporter(Board&& board)
+    : board(std::move(board)), ocodes(1), globalVars(100) {}
 
 /******************************************************************************/
 /*
@@ -84,13 +84,13 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
     //set imperial/metric conversion factor for output coordinates depending on metricoutput option
     cfactor = bMetricoutput ? 25.4 : 1;
     
-    tileInfo = Tiling::generateTileInfo( options, board->get_height(), board->get_width() );
+    tileInfo = Tiling::generateTileInfo( options, board.get_height(), board.get_width() );
 
-    for ( string layername : board->list_layers() )
+    for ( string layername : board.list_layers() )
     {
         if (options["zero-start"].as<bool>()) {
-          xoffset = board->get_bounding_box().min_corner().x();
-          yoffset = board->get_bounding_box().min_corner().y();
+          xoffset = board.get_bounding_box().min_corner().x();
+          yoffset = board.get_bounding_box().min_corner().y();
         } else {
           xoffset = 0;
           yoffset = 0;
@@ -119,10 +119,10 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
         option_name << layername << "-output";
         string of_name = build_filename(outputdir, options[option_name.str()].as<string>());
         cout << "Exporting " << layername << "... " << flush;
-        export_layer(board->get_layer(layername), of_name, leveller);
-        cout << "DONE." << " (Height: " << board->get_height() * cfactor
+        export_layer(board.get_layer(layername), of_name, leveller);
+        cout << "DONE." << " (Height: " << board.get_height() * cfactor
              << (bMetricoutput ? "mm" : "in") << " Width: "
-             << board->get_width() * cfactor << (bMetricoutput ? "mm" : "in")
+             << board.get_width() * cfactor << (bMetricoutput ? "mm" : "in")
              << ")";
         if (layername == "outline")
             cout << " The board should be cut from the " << ( workSide(options, "cut") ? "FRONT" : "BACK" ) << " side. ";
