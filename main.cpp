@@ -320,21 +320,6 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     board->createLayers();
     cout << "DONE.\n";
 
-    if (!vm["no-export"].as<bool>()) {
-      auto exporter = make_shared<NGC_Exporter>(board);
-      exporter->add_header(PACKAGE_STRING);
-
-      if (vm.count("preamble") || vm.count("preamble-text")) {
-        exporter->set_preamble(preamble);
-      }
-
-      if (vm.count("postamble")) {
-        exporter->set_postamble(postamble);
-      }
-
-      exporter->export_all(vm);
-    }
-
     //---------------------------------------------------------------------------
     //load and process the drill file
 
@@ -386,16 +371,16 @@ void do_pcb2gcode(int argc, const char* argv[]) {
                 drill_filename = boost::none;
                 milldrill_filename = boost::none;
             }
-            // We can modify the cutter because we're not going to use it again.
+            auto milldrill = *cutter;
             if (vm.count("milldrill-diameter")) {
-              cutter->tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
+              milldrill.tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
             }
             if (vm.count("zmilldrill")) {
-              cutter->zwork = vm["zmilldrill"].as<Length>().asInch(unit);
+              milldrill.zwork = vm["zmilldrill"].as<Length>().asInch(unit);
             } else {
-              cutter->zwork = vm["zdrill"].as<Length>().asInch(unit);
+              milldrill.zwork = vm["zdrill"].as<Length>().asInch(unit);
             }
-            ep.export_ngc(outputdir, milldrill_filename, *cutter,
+            ep.export_ngc(outputdir, milldrill_filename, milldrill,
                           vm["nom6"].as<bool>(),
                           vm["zchange-absolute"].as<bool>());
             ep.export_ngc(outputdir, drill_filename,
@@ -412,6 +397,21 @@ void do_pcb2gcode(int argc, const char* argv[]) {
         }
     } else {
         cout << "not specified.\n";
+    }
+
+    if (!vm["no-export"].as<bool>()) {
+      auto exporter = make_shared<NGC_Exporter>(board);
+      exporter->add_header(PACKAGE_STRING);
+
+      if (vm.count("preamble") || vm.count("preamble-text")) {
+        exporter->set_preamble(preamble);
+      }
+
+      if (vm.count("postamble")) {
+        exporter->set_postamble(postamble);
+      }
+
+      exporter->export_all(vm);
     }
 
     cout << "END." << endl;
