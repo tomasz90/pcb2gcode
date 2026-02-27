@@ -54,7 +54,7 @@ public:
           MillFeedDirection::MillFeedDirection mill_feed_direction, bool invert_gerbers,
           bool render_paths_to_shapes);
 
-    void prepareLayer(std::string layername, std::shared_ptr<GerberImporter> importer,
+    void prepareLayer(std::string layername, GerberImporter importer,
                       std::shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror);
     void set_margins(double margins) { margin = margins; }
     coordinate_type_fp get_width();
@@ -88,7 +88,7 @@ private:
      * prep_t tuples, whose signature must basically match the construction
      * signature of Layer.
      */
-    typedef std::tuple<std::shared_ptr<GerberImporter>, std::shared_ptr<RoutingMill>, bool, bool> prep_t;
+    typedef std::tuple<GerberImporter, std::shared_ptr<RoutingMill>, bool, bool> prep_t;
     std::map<std::string, prep_t> prepared_layers;
     std::map<std::string, std::shared_ptr<Layer> > layers;
 };

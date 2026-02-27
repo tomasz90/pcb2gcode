@@ -280,11 +280,11 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing front side... " << flush;
     if (vm.count("front") > 0) {
       string frontfile = vm["front"].as<string>();
-      auto importer = make_shared<GerberImporter>(tolerance);
-      if (!importer->load_file(frontfile)) {
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(frontfile)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("front", importer, isolator, false, ymirror);
+      board->prepareLayer("front", std::move(importer), isolator, false, ymirror);
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -293,11 +293,11 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing back side... " << flush;
     if (vm.count("back") > 0) {
       string backfile = vm["back"].as<string>();
-      auto importer = make_shared<GerberImporter>(tolerance);
-      if (!importer->load_file(backfile)) {
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(backfile)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("back", importer, isolator, true, ymirror);
+      board->prepareLayer("back", std::move(importer), isolator, true, ymirror);
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -306,11 +306,11 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing outline... " << flush;
     if (vm.count("outline") > 0) {
       string outline = vm["outline"].as<string>();
-      auto importer = make_shared<GerberImporter>(tolerance);
-      if (!importer->load_file(outline)) {
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(outline)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("outline", importer, cutter, !workSide(vm, "cut"), ymirror);
+      board->prepareLayer("outline", std::move(importer), cutter, !workSide(vm, "cut"), ymirror);
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";

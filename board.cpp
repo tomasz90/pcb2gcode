@@ -69,9 +69,9 @@ double Board::get_height() {
   return layers.begin()->second->surface->get_height_in();
 }
 
-void Board::prepareLayer(string layername, shared_ptr<GerberImporter> importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
+void Board::prepareLayer(string layername, GerberImporter importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
   // see comment for prep_t in board.hpp
-  prepared_layers.insert(std::make_pair(layername, make_tuple(importer, manufacturer, backside, ymirror)));
+  prepared_layers.insert(std::make_pair(layername, make_tuple(std::move(importer), manufacturer, backside, ymirror)));
 }
 
 /******************************************************************************/
@@ -88,12 +88,12 @@ void Board::createLayers()
     // Calculate the maximum possible room needed by the PCB traces, for tiling later.
     const auto outline = prepared_layers.find("outline");
     if (outline != prepared_layers.cend() &&
-        (get<0>(outline->second)->get_bounding_box().min_corner() <
-         get<0>(outline->second)->get_bounding_box().max_corner())) {
+        (get<0>(outline->second).get_bounding_box().min_corner() <
+         get<0>(outline->second).get_bounding_box().max_corner())) {
       shared_ptr<Cutter> outline_mill = static_pointer_cast<Cutter>(get<1>(outline->second));
       const auto& importer = get<0>(outline->second);
       coordinate_type_fp tool_diameter = outline_mill->tool_diameter;
-      bounding_box = bg::return_buffer<box_type_fp>(importer->get_bounding_box(), tool_diameter);
+      bounding_box = bg::return_buffer<box_type_fp>(importer.get_bounding_box(), tool_diameter);
     } else {
       for (const auto& layer_name : std::vector<std::string>{"front", "back"}) {
         const auto current_layer = prepared_layers.find(layer_name);
@@ -113,7 +113,7 @@ void Board::createLayers()
               // Figure out how much margin the extra passes might make.
               extra_passes_margin = tool_diameter + (tool_diameter - overlap_width) * extra_passes;
             }
-            auto current_bounding_box = bg::return_buffer<box_type_fp>(importer->get_bounding_box(), extra_passes_margin + trace_mill->offset);
+            auto current_bounding_box = bg::return_buffer<box_type_fp>(importer.get_bounding_box(), extra_passes_margin + trace_mill->offset);
             bg::expand(bounding_box, current_bounding_box);
           }
         }
@@ -123,7 +123,7 @@ void Board::createLayers()
     // board size calculated. create layers
     for (const auto& prepared_layer : prepared_layers) {
       // prepare the surface
-      GerberImporter const& importer = *get<0>(prepared_layer.second);
+      GerberImporter const& importer = get<0>(prepared_layer.second);
       const bool fill = fill_outline && prepared_layer.first == "outline";
 
       auto surface = make_shared<Surface_vectorial>(
@@ -150,8 +150,8 @@ void Board::createLayers()
 
     // mask layers with outline
     if (outline != prepared_layers.cend() &&
-        (get<0>(outline->second)->get_bounding_box().min_corner() <
-         get<0>(outline->second)->get_bounding_box().max_corner())) {
+        (get<0>(outline->second).get_bounding_box().min_corner() <
+         get<0>(outline->second).get_bounding_box().max_corner())) {
       shared_ptr<Layer> outline_layer = layers.at("outline");
 
       for (const auto& layer : layers) {
