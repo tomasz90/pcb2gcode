@@ -37,6 +37,12 @@
 
 class gerber_exception: public std::exception {};
 
+struct GerbvDeleter {
+  void operator()(gerbv_project_t* p) {
+    gerbv_destroy_project(p);
+  }
+};
+
 /******************************************************************************/
 /*
  Importer for RS274-X Gerber files.
@@ -49,14 +55,13 @@ class GerberImporter {
 public:
   GerberImporter(coordinate_type_fp max_arc_segment_length);
   bool load_file(const std::string& path);
-  virtual ~GerberImporter();
 
   virtual box_type_fp get_bounding_box() const;
 
   virtual std::pair<multi_polygon_type_fp, std::map<coordinate_type_fp, multi_linestring_type_fp>> render(
       bool fill_closed_lines,
       bool render_paths_to_shapes) const;
-  const gerbv_project_t* get_project() const {
+  std::unique_ptr<gerbv_project_t, GerbvDeleter> const& get_project() const {
     return project;
   }
 
@@ -82,7 +87,7 @@ private:
                                    coordinate_type_fp gap_width) const;
   std::map<int, multi_polygon_type_fp> generate_apertures_map(const gerbv_aperture_t * const apertures[]) const;
   coordinate_type_fp const max_arc_segment_length;
-  gerbv_project_t* project;
+  std::unique_ptr<gerbv_project_t, GerbvDeleter> project;
 };
 
 #endif // GERBERIMPORTER_H
