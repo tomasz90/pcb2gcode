@@ -238,7 +238,7 @@ void Surface_vectorial::write_svgs(const string& tool_suffix, coordinate_type_fp
 }
 
 vector<pair<linestring_type_fp, bool>> full_eulerian_paths(
-    const std::shared_ptr<RoutingMill>& mill,
+    RoutingMill const& mill,
     const vector<pair<linestring_type_fp, bool>>& toolpath) {
   auto toolpath1 = toolpath;
   toolpath1 = segmentize::segmentize_paths(toolpath1);
@@ -247,11 +247,11 @@ vector<pair<linestring_type_fp, bool>> full_eulerian_paths(
   vector<pair<linestring_type_fp, bool>> paths_to_add;
   paths_to_add = backtrack::backtrack(
       toolpath1,
-      mill->feed,
-      (mill->zsafe - mill->zwork) / mill->g0_vertical_speed,
-      mill->g0_vertical_speed,
-      (mill->zsafe - mill->zwork) / mill->vertfeed,
-      mill->backtrack);
+      mill.feed,
+      (mill.zsafe - mill.zwork) / mill.g0_vertical_speed,
+      mill.g0_vertical_speed,
+      (mill.zsafe - mill.zwork) / mill.vertfeed,
+      mill.backtrack);
   for (const auto& p : paths_to_add) {
     toolpath1.push_back(p);
   }
@@ -270,14 +270,14 @@ multi_linestring_type_fp Surface_vectorial::post_process_toolpath(
     const boost::optional<const path_finding::PathFindingSurface*>& path_finding_surface,
     vector<pair<linestring_type_fp, bool>> toolpath1) const {
   if (mill->eulerian_paths) {
-    toolpath1 = full_eulerian_paths(mill, toolpath1);
+    toolpath1 = full_eulerian_paths(*mill, toolpath1);
   }
   if (path_finding_surface) {
     const auto extra_paths = final_path_finder(mill, **path_finding_surface, toolpath1);
     if (extra_paths.size() > 0) {
       toolpath1.insert(toolpath1.cend(), extra_paths.cbegin(), extra_paths.cend());
       if (mill->eulerian_paths) {
-        toolpath1 = full_eulerian_paths(mill, toolpath1);
+        toolpath1 = full_eulerian_paths(*mill, toolpath1);
       }
     }
   }
