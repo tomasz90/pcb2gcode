@@ -135,26 +135,26 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
  * by where the bridges begins.  So the bridges is from points with indecies x
  * to x+1 for each element in the bridges vector.  We can always assume that the
  * bridge segment and the segments on either side form a straight line. */
-void NGC_Exporter::cutter_milling(std::ofstream& of, shared_ptr<Cutter> cutter, const linestring_type_fp& path,
+void NGC_Exporter::cutter_milling(std::ofstream& of, Cutter const& cutter, const linestring_type_fp& path,
                                   const vector<size_t>& bridges, const double xoffsetTot, const double yoffsetTot) {
-  const unsigned int steps_num = cutter->stepsize == 0 ?
+  const unsigned int steps_num = cutter.stepsize == 0 ?
                                  1 :
-                                 std::max(ceil(-cutter->zwork / cutter->stepsize), 1.0);
+                                 std::max(ceil(-cutter.zwork / cutter.stepsize), 1.0);
 
   for (unsigned int i = 0; i < steps_num; i++) {
-    const double z = cutter->zwork / steps_num * (i + 1);
+    const double z = cutter.zwork / steps_num * (i + 1);
 
     /* Lift between steps if this is not the first pass and the path
        is not a closed loop. */
     if (i > 0 && path.front() != path.back()) {
-      of << "G00 Z" << cutter->zsafe * cfactor << " ( retract )\n";
+      of << "G00 Z" << cutter.zsafe * cfactor << " ( retract )\n";
       of << "G00 X" << ( path.begin()->x() - xoffsetTot ) * cfactor << " Y"
          << ( path.begin()->y() - yoffsetTot ) * cfactor << " ( rapid move to begin. )\n";
     }
 
-    of << "G01 Z" << z * cfactor << " F" << cutter->vertfeed * cfactor << " ( plunge. )\n";
+    of << "G01 Z" << z * cfactor << " F" << cutter.vertfeed * cfactor << " ( plunge. )\n";
     of << "G04 P0 ( dwell for no time -- G64 should not smooth over this point )\n";
-    of << "G01 F" << cutter->feed * cfactor << "\n";
+    of << "G01 F" << cutter.feed * cfactor << "\n";
 
     auto current_bridge = bridges.cbegin();
 
@@ -167,14 +167,14 @@ void NGC_Exporter::cutter_milling(std::ofstream& of, shared_ptr<Cutter> cutter, 
       // We are now cutting to current.
       // Is this a bridge cut?
       auto is_bridge_cut = current_bridge != bridges.cend() && *current_bridge == current-1;
-      if (is_bridge_cut && z < cutter->bridges_height && !in_bridge) {
+      if (is_bridge_cut && z < cutter.bridges_height && !in_bridge) {
         // We're about to make a bridge cut so we need to go up.
-        of << "G00 Z" << cutter->bridges_height * cfactor << '\n';
+        of << "G00 Z" << cutter.bridges_height * cfactor << '\n';
         in_bridge = true;
       } else if (!is_bridge_cut && in_bridge) {
         // Now plunge back down if needed.
-        of << "G01 Z" << z * cfactor << " F" << cutter->vertfeed * cfactor << '\n';
-        of << "G01 F" << cutter->feed * cfactor << '\n';
+        of << "G01 Z" << z * cfactor << " F" << cutter.vertfeed * cfactor << '\n';
+        of << "G01 F" << cutter.feed * cfactor << '\n';
         in_bridge = false;
       }
 
@@ -379,7 +379,7 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
              * i know this is partially repetitive, but this way it's easier to read
              */
             if (cutter) {
-              cutter_milling(of, cutter, path, all_bridges[path_index], xoffsetTot, yoffsetTot);
+              cutter_milling(of, *cutter, path, all_bridges[path_index], xoffsetTot, yoffsetTot);
             } else {
               isolation_milling(of, mill, path, leveller, xoffsetTot, yoffsetTot);
             }
