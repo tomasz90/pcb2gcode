@@ -185,29 +185,29 @@ void NGC_Exporter::cutter_milling(std::ofstream& of, Cutter const& cutter, const
   }
 }
 
-void NGC_Exporter::isolation_milling(std::ofstream& of, shared_ptr<RoutingMill> mill, const linestring_type_fp& path,
+void NGC_Exporter::isolation_milling(std::ofstream& of, RoutingMill const& mill, const linestring_type_fp& path,
                                      boost::optional<autoleveller>& leveller, const double xoffsetTot, const double yoffsetTot) {
-  of << "G01 F" << mill->vertfeed * cfactor << '\n';
+  of << "G01 F" << mill.vertfeed * cfactor << '\n';
 
-  if (!mill->pre_milling_gcode.empty()) {
+  if (!mill.pre_milling_gcode.empty()) {
     of << "( begin pre-milling-gcode )\n";
-    of << mill->pre_milling_gcode << "\n";
+    of << mill.pre_milling_gcode << "\n";
     of << "( end pre-milling-gcode )\n";
   }
 
-  const unsigned int steps_num = mill->stepsize == 0 ?
+  const unsigned int steps_num = mill.stepsize == 0 ?
                                  1 :
-                                 std::max(ceil(-mill->zwork / mill->stepsize), 1.0);
+                                 std::max(ceil(-mill.zwork / mill.stepsize), 1.0);
 
   for (unsigned int i = 0; i < steps_num; i++) {
-    const double z = mill->zwork / steps_num * (i + 1);
+    const double z = mill.zwork / steps_num * (i + 1);
     linestring_type_fp::const_iterator iter = path.cbegin();
     of << "( Mill infeed pass " << i+1 << "/" << steps_num << " )\n";
 
     /* Lift between steps if this is not the first pass and the path
        is not a closed loop. */
     if (i > 0 && path.front() != path.back()) {
-      of << "G00 Z" << mill->zsafe * cfactor << " ( retract )\n";
+      of << "G00 Z" << mill.zsafe * cfactor << " ( retract )\n";
       of << "G00 X" << ( path.begin()->x() - xoffsetTot ) * cfactor << " Y"
          << ( path.begin()->y() - yoffsetTot ) * cfactor << " ( rapid move to begin. )\n";
     }
@@ -222,7 +222,7 @@ void NGC_Exporter::isolation_milling(std::ofstream& of, shared_ptr<RoutingMill> 
       of << "G01 Z" << z * cfactor << "\n";
     }
     of << "G04 P0 ( dwell for no time -- G64 should not smooth over this point )\n";
-    of << "G01 F" << mill->feed * cfactor << '\n';
+    of << "G01 F" << mill.feed * cfactor << '\n';
     while (iter != path.cend()) {
       if (leveller) {
         of << leveller->addChainPoint(point_type_fp((iter->x() - xoffsetTot) * cfactor,
@@ -235,9 +235,9 @@ void NGC_Exporter::isolation_milling(std::ofstream& of, shared_ptr<RoutingMill> 
       ++iter;
     }
   }
-  if (!mill->post_milling_gcode.empty()) {
+  if (!mill.post_milling_gcode.empty()) {
     of << "( begin post-milling-gcode )\n";
-    of << mill->post_milling_gcode << "\n";
+    of << mill.post_milling_gcode << "\n";
     of << "( end post-milling-gcode )\n";
   }
 }
@@ -381,7 +381,7 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
             if (cutter) {
               cutter_milling(of, *cutter, path, all_bridges[path_index], xoffsetTot, yoffsetTot);
             } else {
-              isolation_milling(of, mill, path, leveller, xoffsetTot, yoffsetTot);
+              isolation_milling(of, *mill, path, leveller, xoffsetTot, yoffsetTot);
             }
           }
         }

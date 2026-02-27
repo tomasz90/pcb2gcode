@@ -53,7 +53,7 @@ protected:
   void export_layer(std::shared_ptr<Layer> layer, std::string of_name, boost::optional<autoleveller> leveller);
   void cutter_milling(std::ofstream& of, Cutter const& cutter, const linestring_type_fp& path,
                       const std::vector<size_t>& bridges, const double xoffsetTot, const double yoffsetTot);
-  void isolation_milling(std::ofstream& of, std::shared_ptr<RoutingMill> mill, const linestring_type_fp& path,
+  void isolation_milling(std::ofstream& of, RoutingMill const& mill, const linestring_type_fp& path,
                          boost::optional<autoleveller>& leveller, const double xoffsetTot, const double yoffsetTot);
 
     std::shared_ptr<Board> board;
