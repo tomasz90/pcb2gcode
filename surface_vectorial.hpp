@@ -101,7 +101,7 @@ protected:
       const multi_polygon_type_fp& already_milled,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   PathFinder make_path_finder(
-      std::shared_ptr<RoutingMill> mill,
+      RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   PathFinderRingIndices make_path_finder_ring_indices(
       RoutingMill const& mill,

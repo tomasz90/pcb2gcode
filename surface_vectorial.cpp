@@ -701,26 +701,26 @@ void attach_polygons(const multi_polygon_type_fp& polygons,
 }
 
 Surface_vectorial::PathFinder Surface_vectorial::make_path_finder(
-    shared_ptr<RoutingMill> mill,
+    RoutingMill const& mill,
     const path_finding::PathFindingSurface& path_finding_surface) const {
   return [mill, &path_finding_surface](const point_type_fp& a, const point_type_fp& b) {
            // Solve for distance:
            // risetime at G0 + horizontal distance G0 + plunge G1 ==
            // travel time at G1
            // The horizontal G0 move is for the maximum of the X and Y coordinates.
-           const auto vertical_distance = mill->zsafe - mill->zwork;
+           const auto vertical_distance = mill.zsafe - mill.zwork;
            const auto max_manhattan = std::max(std::abs(a.x() - b.x()), std::abs(a.y() - b.y()));
-           const double horizontalG1speed = mill->feed;
-           const double vertG1speed = mill->vertfeed;
-           const double g0_time = vertical_distance/mill->g0_vertical_speed + max_manhattan/mill->g0_horizontal_speed + vertical_distance/vertG1speed;
+           const double horizontalG1speed = mill.feed;
+           const double vertG1speed = mill.vertfeed;
+           const double g0_time = vertical_distance/mill.g0_vertical_speed + max_manhattan/mill.g0_horizontal_speed + vertical_distance/vertG1speed;
            // The time saved by milling would be g0_time - g1_distance/g1_horizontal_speed.
            // The extra wear on the mill is g1_distance.
            // Wear is limited by the backtrack value (in distance/time).
            // g1_distance/time_saved < backtrack => g1_distance < backtrack/time_saved
-           const double max_g1_distance = std::isinf(mill->backtrack) ?
+           const double max_g1_distance = std::isinf(mill.backtrack) ?
                g0_time * horizontalG1speed :
-               mill->backtrack*g0_time / (1 + mill->backtrack/horizontalG1speed);
-           return path_finding_surface.find_path(a, b, max_g1_distance, boost::make_optional(mill->path_finding_limit));
+               mill.backtrack*g0_time / (1 + mill.backtrack/horizontalG1speed);
+           return path_finding_surface.find_path(a, b, max_g1_distance, boost::make_optional(mill.path_finding_limit));
          };
 }
 
@@ -804,7 +804,7 @@ vector<pair<linestring_type_fp, bool>> Surface_vectorial::get_single_toolpath(
     // fast, and plunge.  Milling is chosen if it's faster and also the path is
     // entirely within the path_finding_surface.  If it's not faster or the path
     // isn't possible, boost::none is returned.
-    PathFinder path_finder = make_path_finder(mill, path_finding_surface);
+    PathFinder path_finder = make_path_finder(*mill, path_finding_surface);
 
     // The rings of polygons are the paths to mill.  The paths may include both
     // inner and outer rings.  They vector has them sorted from the smallest
