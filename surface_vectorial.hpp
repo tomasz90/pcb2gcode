@@ -104,7 +104,7 @@ protected:
       std::shared_ptr<RoutingMill> mill,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   PathFinderRingIndices make_path_finder_ring_indices(
-      std::shared_ptr<RoutingMill> mill,
+      RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   std::vector<std::pair<linestring_type_fp, bool>> final_path_finder(
       const std::shared_ptr<RoutingMill>& mill,
