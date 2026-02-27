@@ -61,7 +61,7 @@ class Surface_vectorial: private boost::noncopyable {
       std::shared_ptr<RoutingMill> mill, bool mirror, bool ymirror);
   void save_debug_image(std::string message);
   void enable_filling();
-  void add_mask(std::shared_ptr<Surface_vectorial> surface);
+  void add_mask(Surface_vectorial const& surface);
   // The importer provides the path.  The tolerance is used for
   // removing some of the finer detail in the path, to save time on
   // processing.

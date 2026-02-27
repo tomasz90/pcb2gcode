@@ -1106,8 +1106,8 @@ void Surface_vectorial::enable_filling() {
     fill = true;
 }
 
-void Surface_vectorial::add_mask(shared_ptr<Surface_vectorial> surface) {
-  mask = surface->vectorial_surface->first;
+void Surface_vectorial::add_mask(Surface_vectorial const& surface) {
+  mask = surface.vectorial_surface->first;
   vectorial_surface->first = vectorial_surface->first & *mask;
   for (auto& diameter_and_path : vectorial_surface->second) {
     diameter_and_path.second = diameter_and_path.second & *mask;

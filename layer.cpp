@@ -72,7 +72,7 @@ shared_ptr<RoutingMill> Layer::get_manufacturer()
 /******************************************************************************/
 void Layer::add_mask(shared_ptr<Layer> mask)
 {
-    surface->add_mask(mask->surface);
+    surface->add_mask(*mask->surface);
 }
 
 vector<size_t> Layer::get_bridges(linestring_type_fp& toolpath) {
