@@ -38,7 +38,7 @@ using std::vector;
 
 #include "bg_operators.hpp"
 
-typedef pair<string, shared_ptr<Layer> > layer_t;
+typedef pair<string, Layer> layer_t;
 
 /******************************************************************************/
 /*
@@ -59,14 +59,14 @@ double Board::get_width() {
   if (layers.size() < 1) {
     return 0;
   }
-  return layers.begin()->second->surface.get_width_in();
+  return layers.begin()->second.surface.get_width_in();
 }
 
 double Board::get_height() {
   if (layers.size() < 1) {
     return 0;
   }
-  return layers.begin()->second->surface.get_height_in();
+  return layers.begin()->second.surface.get_height_in();
 }
 
 void Board::prepareLayer(string layername, GerberImporter importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
@@ -135,29 +135,29 @@ void Board::createLayers()
         surface.enable_filling();
       }
       surface.render(importer, get<1>(prepared_layer.second)->optimise);
-      auto layer = make_shared<Layer>(prepared_layer.first,
-                                      std::move(surface),
-                                      get<1>(prepared_layer.second),
-                                      get<2>(prepared_layer.second),
-                                      get<3>(prepared_layer.second)); // see comment for prep_t in board.hpp
-      layers.insert(std::make_pair(layer->get_name(), layer));
+      Layer layer(prepared_layer.first,
+                  std::move(surface),
+                  get<1>(prepared_layer.second),
+                  get<2>(prepared_layer.second),
+                  get<3>(prepared_layer.second)); // see comment for prep_t in board.hpp
+      layers.insert(std::make_pair(layer.get_name(), layer));
     }
 
     // DEBUG output
     for (layer_t layer : layers) {
-      layer.second->surface.save_debug_image(string("original_") + layer.second->get_name());
+      layer.second.surface.save_debug_image(string("original_") + layer.second.get_name());
     }
 
     // mask layers with outline
     if (outline != prepared_layers.cend() &&
         (get<0>(outline->second).get_bounding_box().min_corner() <
          get<0>(outline->second).get_bounding_box().max_corner())) {
-      shared_ptr<Layer> outline_layer = layers.at("outline");
+      Layer outline_layer = layers.at("outline");
 
-      for (const auto& layer : layers) {
-        if (layer.second != outline_layer) {
-          layer.second->add_mask(*outline_layer);
-          layer.second->surface.save_debug_image(string("masked_") + layer.second->get_name());
+      for (auto& layer : layers) {
+        if (layer.first != "outline") {
+          layer.second.add_mask(outline_layer);
+          layer.second.surface.save_debug_image(string("masked_") + layer.second.get_name());
         }
       }
     }
@@ -183,7 +183,7 @@ vector<string> Board::list_layers()
 /*
  */
 /******************************************************************************/
-shared_ptr<Layer> Board::get_layer(string layername)
+Layer& Board::get_layer(string layername)
 {
     return layers.at(layername);
 }

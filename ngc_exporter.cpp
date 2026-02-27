@@ -243,10 +243,10 @@ void NGC_Exporter::isolation_milling(std::ofstream& of, RoutingMill const& mill,
 }
 
 
-void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::optional<autoleveller> leveller) {
-    string layername = layer->get_name();
-    shared_ptr<RoutingMill> mill = layer->get_manufacturer();
-    vector<pair<coordinate_type_fp, multi_linestring_type_fp>> all_toolpaths = layer->get_toolpaths();
+void NGC_Exporter::export_layer(Layer& layer, string of_name, boost::optional<autoleveller> leveller) {
+    string layername = layer.get_name();
+    shared_ptr<RoutingMill> mill = layer.get_manufacturer();
+    vector<pair<coordinate_type_fp, multi_linestring_type_fp>> all_toolpaths = layer.get_toolpaths();
 
     if (all_toolpaths.size() < 1) {
       return; // Nothing to do.
@@ -309,7 +309,7 @@ void NGC_Exporter::export_layer(shared_ptr<Layer> layer, string of_name, boost::
     vector<vector<size_t>> all_bridges;
     if (cutter) {
       for (auto& path : all_toolpaths[0].second) {  // Cutter layer can only have one tool_diameter.
-        auto bridges = layer->get_bridges(path);
+        auto bridges = layer.get_bridges(path);
         all_bridges.push_back(bridges);
       }
     }

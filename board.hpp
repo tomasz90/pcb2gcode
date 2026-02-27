@@ -63,7 +63,7 @@ public:
     double get_layersnum() {  return layers.size(); }
 
     std::vector<std::string> list_layers();
-    std::shared_ptr<Layer> get_layer(std::string layername);
+    Layer& get_layer(std::string layername);
     std::vector<std::pair<coordinate_type_fp, multi_linestring_type_fp>> get_toolpath(std::string layername);
 
     void createLayers(); // should be private
@@ -90,7 +90,7 @@ private:
      */
     typedef std::tuple<GerberImporter, std::shared_ptr<RoutingMill>, bool, bool> prep_t;
     std::map<std::string, prep_t> prepared_layers;
-    std::map<std::string, std::shared_ptr<Layer> > layers;
+    std::map<std::string, Layer> layers;
 };
 
 #endif // BOARD_H
