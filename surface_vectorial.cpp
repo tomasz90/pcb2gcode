@@ -273,7 +273,7 @@ multi_linestring_type_fp Surface_vectorial::post_process_toolpath(
     toolpath1 = full_eulerian_paths(*mill, toolpath1);
   }
   if (path_finding_surface) {
-    const auto extra_paths = final_path_finder(mill, **path_finding_surface, toolpath1);
+    const auto extra_paths = final_path_finder(*mill, **path_finding_surface, toolpath1);
     if (extra_paths.size() > 0) {
       toolpath1.insert(toolpath1.cend(), extra_paths.cbegin(), extra_paths.cend());
       if (mill->eulerian_paths) {
@@ -875,7 +875,7 @@ vector<pair<linestring_type_fp, bool>> Surface_vectorial::get_single_toolpath(
 // path is reversible.  Returns new paths to add to the list that was
 // provided.
 vector<pair<linestring_type_fp, bool>> Surface_vectorial::final_path_finder(
-    const std::shared_ptr<RoutingMill>& mill,
+    RoutingMill const& mill,
     const path_finding::PathFindingSurface& path_finding_surface,
     const vector<pair<linestring_type_fp, bool>>& paths) const {
   // Find all the connectable endpoints.  A connection can only be
@@ -923,7 +923,7 @@ vector<pair<linestring_type_fp, bool>> Surface_vectorial::final_path_finder(
   }
 
   vector<pair<linestring_type_fp, bool>> new_paths;
-  PathFinderRingIndices path_finder = make_path_finder_ring_indices(*mill, path_finding_surface);
+  PathFinderRingIndices path_finder = make_path_finder_ring_indices(mill, path_finding_surface);
   DisjointSet<size_t> joined_paths;
   for (const auto& start_end : connections) {
     const point_type_fp& start = get<1>(start_end);

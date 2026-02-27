@@ -107,7 +107,7 @@ protected:
       RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   std::vector<std::pair<linestring_type_fp, bool>> final_path_finder(
-      const std::shared_ptr<RoutingMill>& mill,
+      RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface,
       const std::vector<std::pair<linestring_type_fp, bool>>& paths) const;
   std::vector<multi_polygon_type_fp> offset_polygon(
