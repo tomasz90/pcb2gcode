@@ -156,7 +156,7 @@ void Board::createLayers()
 
       for (const auto& layer : layers) {
         if (layer.second != outline_layer) {
-          layer.second->add_mask(outline_layer);
+          layer.second->add_mask(*outline_layer);
           layer.second->surface.save_debug_image(string("masked_") + layer.second->get_name());
         }
       }
