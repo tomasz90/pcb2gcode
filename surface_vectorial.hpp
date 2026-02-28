@@ -31,7 +31,6 @@
 
 #include <memory>
 
-#include <boost/noncopyable.hpp>
 #include <boost/optional.hpp>
 
 #include "mill.hpp"
@@ -44,7 +43,7 @@
 /*
  */
 /******************************************************************************/
-class Surface_vectorial: private boost::noncopyable {
+class Surface_vectorial {
  public:
   // This function returns a linestring that connects two points if possible.
   typedef std::function<boost::optional<linestring_type_fp>(const point_type_fp& start, const point_type_fp& end)> PathFinder;
@@ -61,11 +60,11 @@ class Surface_vectorial: private boost::noncopyable {
       std::shared_ptr<RoutingMill> mill, bool mirror, bool ymirror);
   void save_debug_image(std::string message);
   void enable_filling();
-  void add_mask(std::shared_ptr<Surface_vectorial> surface);
+  void add_mask(Surface_vectorial const& surface);
   // The importer provides the path.  The tolerance is used for
   // removing some of the finer detail in the path, to save time on
   // processing.
-  void render(std::shared_ptr<GerberImporter> importer, double tolerance);
+  void render(GerberImporter const& importer, double tolerance);
 
   inline coordinate_type_fp get_width_in() {
     return bounding_box.max_corner().x() - bounding_box.min_corner().x();
@@ -87,14 +86,14 @@ protected:
   const bool invert_gerbers;
   const bool render_paths_to_shapes;
 
-  std::shared_ptr<std::pair<multi_polygon_type_fp,
-                      std::map<coordinate_type_fp, multi_linestring_type_fp>>>
+  std::pair<multi_polygon_type_fp,
+            std::map<coordinate_type_fp, multi_linestring_type_fp>>
       vectorial_surface;
   multi_polygon_type_fp voronoi;
   std::vector<polygon_type_fp> thermal_holes;
 
 
-  std::shared_ptr<Surface_vectorial> mask;
+  boost::optional<multi_polygon_type_fp> mask;
 
   std::vector<std::pair<linestring_type_fp, bool>> get_single_toolpath(
       std::shared_ptr<RoutingMill> mill, const size_t trace_index, bool mirror, const double tool_diameter,
@@ -102,13 +101,13 @@ protected:
       const multi_polygon_type_fp& already_milled,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   PathFinder make_path_finder(
-      std::shared_ptr<RoutingMill> mill,
+      RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   PathFinderRingIndices make_path_finder_ring_indices(
-      std::shared_ptr<RoutingMill> mill,
+      RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface) const;
   std::vector<std::pair<linestring_type_fp, bool>> final_path_finder(
-      const std::shared_ptr<RoutingMill>& mill,
+      RoutingMill const& mill,
       const path_finding::PathFindingSurface& path_finding_surface,
       const std::vector<std::pair<linestring_type_fp, bool>>& paths) const;
   std::vector<multi_polygon_type_fp> offset_polygon(

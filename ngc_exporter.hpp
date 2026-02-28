@@ -41,22 +41,22 @@
 /*
  */
 /******************************************************************************/
-class NGC_Exporter: private boost::noncopyable {
+class NGC_Exporter {
 public:
-    NGC_Exporter(std::shared_ptr<Board> board);
+    NGC_Exporter(Board&& board);
     void add_header(std::string);
     void export_all(boost::program_options::variables_map&);
     void set_preamble(std::string);
     void set_postamble(std::string);
 
 protected:
-  void export_layer(std::shared_ptr<Layer> layer, std::string of_name, boost::optional<autoleveller> leveller);
-  void cutter_milling(std::ofstream& of, std::shared_ptr<Cutter> cutter, const linestring_type_fp& path,
+  void export_layer(Layer& layer, std::string of_name, boost::optional<autoleveller> leveller);
+  void cutter_milling(std::ofstream& of, Cutter const& cutter, const linestring_type_fp& path,
                       const std::vector<size_t>& bridges, const double xoffsetTot, const double yoffsetTot);
-  void isolation_milling(std::ofstream& of, std::shared_ptr<RoutingMill> mill, const linestring_type_fp& path,
+  void isolation_milling(std::ofstream& of, RoutingMill const& mill, const linestring_type_fp& path,
                          boost::optional<autoleveller>& leveller, const double xoffsetTot, const double yoffsetTot);
 
-    std::shared_ptr<Board> board;
+    Board board;
     std::vector<std::string> header;
     std::string preamble;        //Preamble from command line (user file)
     std::string postamble;       //Postamble from command line (user file)

@@ -38,7 +38,7 @@ using std::vector;
 
 #include "bg_operators.hpp"
 
-typedef pair<string, shared_ptr<Layer> > layer_t;
+typedef pair<string, Layer> layer_t;
 
 /******************************************************************************/
 /*
@@ -59,19 +59,19 @@ double Board::get_width() {
   if (layers.size() < 1) {
     return 0;
   }
-  return layers.begin()->second->surface->get_width_in();
+  return layers.begin()->second.surface.get_width_in();
 }
 
 double Board::get_height() {
   if (layers.size() < 1) {
     return 0;
   }
-  return layers.begin()->second->surface->get_height_in();
+  return layers.begin()->second.surface.get_height_in();
 }
 
-void Board::prepareLayer(string layername, shared_ptr<GerberImporter> importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
+void Board::prepareLayer(string layername, GerberImporter importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
   // see comment for prep_t in board.hpp
-  prepared_layers.insert(std::make_pair(layername, make_tuple(importer, manufacturer, backside, ymirror)));
+  prepared_layers.insert(std::make_pair(layername, make_tuple(std::move(importer), manufacturer, backside, ymirror)));
 }
 
 /******************************************************************************/
@@ -88,12 +88,12 @@ void Board::createLayers()
     // Calculate the maximum possible room needed by the PCB traces, for tiling later.
     const auto outline = prepared_layers.find("outline");
     if (outline != prepared_layers.cend() &&
-        (get<0>(outline->second)->get_bounding_box().min_corner() <
-         get<0>(outline->second)->get_bounding_box().max_corner())) {
+        (get<0>(outline->second).get_bounding_box().min_corner() <
+         get<0>(outline->second).get_bounding_box().max_corner())) {
       shared_ptr<Cutter> outline_mill = static_pointer_cast<Cutter>(get<1>(outline->second));
       const auto& importer = get<0>(outline->second);
       coordinate_type_fp tool_diameter = outline_mill->tool_diameter;
-      bounding_box = bg::return_buffer<box_type_fp>(importer->get_bounding_box(), tool_diameter);
+      bounding_box = bg::return_buffer<box_type_fp>(importer.get_bounding_box(), tool_diameter);
     } else {
       for (const auto& layer_name : std::vector<std::string>{"front", "back"}) {
         const auto current_layer = prepared_layers.find(layer_name);
@@ -113,7 +113,7 @@ void Board::createLayers()
               // Figure out how much margin the extra passes might make.
               extra_passes_margin = tool_diameter + (tool_diameter - overlap_width) * extra_passes;
             }
-            auto current_bounding_box = bg::return_buffer<box_type_fp>(importer->get_bounding_box(), extra_passes_margin + trace_mill->offset);
+            auto current_bounding_box = bg::return_buffer<box_type_fp>(importer.get_bounding_box(), extra_passes_margin + trace_mill->offset);
             bg::expand(bounding_box, current_bounding_box);
           }
         }
@@ -123,41 +123,41 @@ void Board::createLayers()
     // board size calculated. create layers
     for (const auto& prepared_layer : prepared_layers) {
       // prepare the surface
-      shared_ptr<GerberImporter> importer = get<0>(prepared_layer.second);
+      GerberImporter const& importer = get<0>(prepared_layer.second);
       const bool fill = fill_outline && prepared_layer.first == "outline";
 
-      auto surface = make_shared<Surface_vectorial>(
+      Surface_vectorial surface(
           bounding_box,
           prepared_layer.first, outputdir, tsp_2opt,
           mill_feed_direction, invert_gerbers,
           render_paths_to_shapes || (prepared_layer.first == "outline"));
       if (fill) {
-        surface->enable_filling();
+        surface.enable_filling();
       }
-      surface->render(importer, get<1>(prepared_layer.second)->optimise);
-      auto layer = make_shared<Layer>(prepared_layer.first,
-                                      surface,
-                                      get<1>(prepared_layer.second),
-                                      get<2>(prepared_layer.second),
-                                      get<3>(prepared_layer.second)); // see comment for prep_t in board.hpp
-      layers.insert(std::make_pair(layer->get_name(), layer));
+      surface.render(importer, get<1>(prepared_layer.second)->optimise);
+      Layer layer(prepared_layer.first,
+                  std::move(surface),
+                  get<1>(prepared_layer.second),
+                  get<2>(prepared_layer.second),
+                  get<3>(prepared_layer.second)); // see comment for prep_t in board.hpp
+      layers.insert(std::make_pair(layer.get_name(), layer));
     }
 
     // DEBUG output
     for (layer_t layer : layers) {
-      layer.second->surface->save_debug_image(string("original_") + layer.second->get_name());
+      layer.second.surface.save_debug_image(string("original_") + layer.second.get_name());
     }
 
     // mask layers with outline
     if (outline != prepared_layers.cend() &&
-        (get<0>(outline->second)->get_bounding_box().min_corner() <
-         get<0>(outline->second)->get_bounding_box().max_corner())) {
-      shared_ptr<Layer> outline_layer = layers.at("outline");
+        (get<0>(outline->second).get_bounding_box().min_corner() <
+         get<0>(outline->second).get_bounding_box().max_corner())) {
+      Layer outline_layer = layers.at("outline");
 
-      for (const auto& layer : layers) {
-        if (layer.second != outline_layer) {
-          layer.second->add_mask(outline_layer);
-          layer.second->surface->save_debug_image(string("masked_") + layer.second->get_name());
+      for (auto& layer : layers) {
+        if (layer.first != "outline") {
+          layer.second.add_mask(outline_layer);
+          layer.second.surface.save_debug_image(string("masked_") + layer.second.get_name());
         }
       }
     }
@@ -183,7 +183,7 @@ vector<string> Board::list_layers()
 /*
  */
 /******************************************************************************/
-shared_ptr<Layer> Board::get_layer(string layername)
+Layer& Board::get_layer(string layername)
 {
     return layers.at(layername);
 }

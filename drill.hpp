@@ -81,12 +81,12 @@ public:
     void set_postamble(std::string);
     linestring_type_fp line_to_holes(const linestring_type_fp& line, double drill_diameter);
     void export_ngc(const std::string of_dir, const boost::optional<std::string>& of_name,
-                    std::shared_ptr<Driller> target, bool onedrill, bool nog81, bool nom6, bool zchange_absolute);
+                    Driller const& target, bool onedrill, bool nog81, bool nom6, bool zchange_absolute);
     void export_ngc(const std::string of_dir, const boost::optional<std::string>& of_name,
-                    std::shared_ptr<Cutter> target, bool nom6, bool zchange_absolute);
+                    Cutter const& target, bool nom6, bool zchange_absolute);
 
-    std::shared_ptr< std::map<int, drillbit> > get_bits();
-    std::shared_ptr< std::map<int, multi_linestring_type_fp> > get_holes();
+    std::map<int, drillbit> get_bits();
+    std::map<int, multi_linestring_type_fp> get_holes();
 
 private:
   struct GerbvDeleter {
@@ -99,7 +99,7 @@ private:
     bool millhole(std::ofstream &of,
                   double start_x, double start_y,
                   double stop_x, double stop_y,
-                  std::shared_ptr<Cutter> cutter, double holediameter);
+                  Cutter const& cutter, double holediameter);
     double get_xvalue(double);
     double get_yvalue(double);
     std::string drill_to_string(drillbit drillbit);

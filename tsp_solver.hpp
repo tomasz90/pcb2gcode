@@ -66,9 +66,9 @@ class tsp_solver {
  public:
   // This function computes the optimised path of a
   //  * point_type_fp
-  //  * std::shared_ptr<linestring_type_fp>
+  //  * linestring_type_fp
   // In the case of point_type_fp it interprets the coordpairs as coordinates and computes the optimised path
-  // In the case of std::shared_ptr<linestring_type_fp> it interprets the std::vector<point_type_fp> as closed paths, and it computes
+  // In the case of linestring_type_fp it interprets the std::vector<point_type_fp> as closed paths, and it computes
   // the optimised path of the first point of each subpath. This can be used in the milling paths, where each
   // subpath is closed and we want to find the best subpath order
   template <typename T, typename point_t>

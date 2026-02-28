@@ -280,11 +280,11 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing front side... " << flush;
     if (vm.count("front") > 0) {
       string frontfile = vm["front"].as<string>();
-      auto importer = make_shared<GerberImporter>(tolerance);
-      if (!importer->load_file(frontfile)) {
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(frontfile)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("front", importer, isolator, false, ymirror);
+      board->prepareLayer("front", std::move(importer), isolator, false, ymirror);
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -293,11 +293,11 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing back side... " << flush;
     if (vm.count("back") > 0) {
       string backfile = vm["back"].as<string>();
-      auto importer = make_shared<GerberImporter>(tolerance);
-      if (!importer->load_file(backfile)) {
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(backfile)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("back", importer, isolator, true, ymirror);
+      board->prepareLayer("back", std::move(importer), isolator, true, ymirror);
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -306,11 +306,11 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     cout << "Importing outline... " << flush;
     if (vm.count("outline") > 0) {
       string outline = vm["outline"].as<string>();
-      auto importer = make_shared<GerberImporter>(tolerance);
-      if (!importer->load_file(outline)) {
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(outline)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("outline", importer, cutter, !workSide(vm, "cut"), ymirror);
+      board->prepareLayer("outline", std::move(importer), cutter, !workSide(vm, "cut"), ymirror);
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -320,29 +320,13 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     board->createLayers();
     cout << "DONE.\n";
 
-    if (!vm["no-export"].as<bool>()) {
-      auto exporter = make_shared<NGC_Exporter>(board);
-      exporter->add_header(PACKAGE_STRING);
-
-      if (vm.count("preamble") || vm.count("preamble-text")) {
-        exporter->set_preamble(preamble);
-      }
-
-      if (vm.count("postamble")) {
-        exporter->set_postamble(postamble);
-      }
-
-      exporter->export_all(vm);
-    }
-
     //---------------------------------------------------------------------------
     //load and process the drill file
 
     cout << "Importing drill... " << flush;
 
     if (vm.count("drill") > 0) {
-        try
-        {
+        try {
             point_type_fp min;
             point_type_fp max;
 
@@ -386,36 +370,49 @@ void do_pcb2gcode(int argc, const char* argv[]) {
                 drill_filename = boost::none;
                 milldrill_filename = boost::none;
             }
-            // We can modify the cutter because we're not going to use it again.
+            auto milldrill = *cutter;
             if (vm.count("milldrill-diameter")) {
-              cutter->tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
+              milldrill.tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
             }
             if (vm.count("zmilldrill")) {
-              cutter->zwork = vm["zmilldrill"].as<Length>().asInch(unit);
+              milldrill.zwork = vm["zmilldrill"].as<Length>().asInch(unit);
             } else {
-              cutter->zwork = vm["zdrill"].as<Length>().asInch(unit);
+              milldrill.zwork = vm["zdrill"].as<Length>().asInch(unit);
             }
-            ep.export_ngc(outputdir, milldrill_filename, cutter,
+            ep.export_ngc(outputdir, milldrill_filename, milldrill,
                           vm["nom6"].as<bool>(),
                           vm["zchange-absolute"].as<bool>());
             ep.export_ngc(outputdir, drill_filename,
-                          driller, vm["onedrill"].as<bool>(), 
+                          *driller, vm["onedrill"].as<bool>(), 
                           vm["nog81"].as<bool>(),
                           vm["nom6"].as<bool>(),
                           vm["zchange-absolute"].as<bool>());
 
             cout << "DONE. The board should be drilled from the " << ( workSide(vm, "drill") ? "FRONT" : "BACK" ) << " side.\n";
 
-        }
-        catch (const drill_exception& e) {
+        } catch (const drill_exception& e) {
           options::maybe_throw("ERROR: drill_exception", ERR_INVALIDPARAMETER);
         }
     } else {
         cout << "not specified.\n";
     }
 
-    cout << "END." << endl;
+    if (!vm["no-export"].as<bool>()) {
+      auto exporter = make_shared<NGC_Exporter>(std::move(*board));
+      exporter->add_header(PACKAGE_STRING);
 
+      if (vm.count("preamble") || vm.count("preamble-text")) {
+        exporter->set_preamble(preamble);
+      }
+
+      if (vm.count("postamble")) {
+        exporter->set_postamble(postamble);
+      }
+
+      exporter->export_all(vm);
+    }
+
+    cout << "END." << endl;
 }
 
 int main(int argc, const char* argv[]) {

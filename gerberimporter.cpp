@@ -64,17 +64,13 @@ typedef bg::strategy::transform::translate_transformer<coordinate_type_fp, 2, 2>
 
 GerberImporter::GerberImporter(coordinate_type_fp max_arc_segment_length)
   : max_arc_segment_length(max_arc_segment_length) {
-  project = gerbv_create_project();
-}
-
-GerberImporter::~GerberImporter() {
-  gerbv_destroy_project(project);
+  project = std::unique_ptr<gerbv_project_t, GerbvDeleter>(gerbv_create_project());
 }
 
 /* Returns true iff successful. */
 bool GerberImporter::load_file(const string& path) {
   gchar *filename = g_strdup(path.c_str());
-  gerbv_open_layer_from_filename(project, filename);
+  gerbv_open_layer_from_filename(project.get(), filename);
   g_free(filename);
   return project->file[0] != NULL;
 }

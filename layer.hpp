@@ -24,15 +24,13 @@
 #include <string>
 #include <vector>
 
-#include <boost/noncopyable.hpp>
-
 #include "geometry.hpp"
 #include "surface_vectorial.hpp"
 #include "mill.hpp"
 
-class Layer : private boost::noncopyable {
+class Layer {
  public:
-  Layer(const std::string& name, std::shared_ptr<Surface_vectorial> surface,
+  Layer(const std::string& name, Surface_vectorial&& surface,
         std::shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror);
 
   std::vector<std::pair<coordinate_type_fp, multi_linestring_type_fp>> get_toolpaths();
@@ -41,13 +39,13 @@ class Layer : private boost::noncopyable {
   std::string get_name() {
     return name;
   }
-  void add_mask(std::shared_ptr<Layer>);
+  void add_mask(Layer const& mask_layer);
 
  private:
   std::string name;
   bool mirrored;
   bool ymirrored;
-  std::shared_ptr<Surface_vectorial> surface;
+  Surface_vectorial surface;
   std::shared_ptr<RoutingMill> manufacturer;
 
   friend class Board;
