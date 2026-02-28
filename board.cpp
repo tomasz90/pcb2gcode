@@ -39,10 +39,15 @@ using std::pair;
 using std::vector;
 
 #include <future>
+#include <mutex>
 
 #include "bg_operators.hpp"
 
 typedef pair<string, Layer> layer_t;
+
+namespace {
+std::mutex render_log_mutex;
+}
 
 /******************************************************************************/
 /*
@@ -144,7 +149,15 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
           if (fill) {
             surface.enable_filling();
           }
+          {
+            std::lock_guard<std::mutex> lock(render_log_mutex);
+            std::cout << "Rendering " << layer_name << "..." << std::endl;
+          }
           surface.render(importer, get<1>(prep)->optimise);
+          {
+            std::lock_guard<std::mutex> lock(render_log_mutex);
+            std::cout << "Layer " << layer_name << " rendered." << std::endl;
+          }
           Layer layer(layer_name,
                       std::move(surface),
                       get<1>(prep),

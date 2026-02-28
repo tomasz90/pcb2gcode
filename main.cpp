@@ -318,9 +318,9 @@ void do_pcb2gcode(int argc, const char* argv[]) {
       cout << "not specified.\n";
     }
 
-    cout << "Processing input files... " << flush;
+    cout << "Processing input files... " << std::endl;
     board->createLayers(std::move(prepared_layers));
-    cout << "DONE.\n";
+    cout << "DONE." << std::endl;
 
     //---------------------------------------------------------------------------
     //load and process the drill file

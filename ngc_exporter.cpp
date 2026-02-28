@@ -43,6 +43,7 @@ using std::pair;
 using std::ceil;
 
 #include <future>
+#include <mutex>
 
 #include <memory>
 using std::shared_ptr;
@@ -52,6 +53,10 @@ using std::dynamic_pointer_cast;
 using boost::format;
 
 #include "units.hpp"
+
+namespace {
+std::mutex export_log_mutex;
+}
 
 NGC_Exporter::NGC_Exporter(Board&& board)
     : board(std::move(board)) {}
@@ -124,15 +129,21 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
           std::stringstream option_name;
           option_name << layername << "-output";
           string of_name = build_filename(outputdir, options[option_name.str()].as<string>());
-          cout << "Exporting " << layername << "... " << flush;
+          {
+            std::lock_guard<std::mutex> lock(export_log_mutex);
+            cout << "Exporting " << layername << "... " << std::endl;
+          }
           export_layer(board.get_layer(layername), of_name, leveller, xoffset, yoffset);
-          cout << "DONE." << " (Height: " << board.get_height() * cfactor
-              << (bMetricoutput ? "mm" : "in") << " Width: "
-              << board.get_width() * cfactor << (bMetricoutput ? "mm" : "in")
-              << ")";
-          if (layername == "outline")
-              cout << " The board should be cut from the " << ( workSide(options, "cut") ? "FRONT" : "BACK" ) << " side. ";
-          cout << endl;
+          {
+            std::lock_guard<std::mutex> lock(export_log_mutex);
+            cout << "..." << layername << " DONE." << " (Height: " << board.get_height() * cfactor
+                << (bMetricoutput ? "mm" : "in") << " Width: "
+                << board.get_width() * cfactor << (bMetricoutput ? "mm" : "in")
+                << ")" << std::endl;
+            if (layername == "outline") {
+              cout << "The board should be cut from the " << ( workSide(options, "cut") ? "FRONT" : "BACK" ) << " side. " << std::endl;
+            }
+          }
         }));
         layer_number++;
     }
