@@ -91,9 +91,10 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
 
     std::vector<std::future<void>> layer_futures;
     int layer_number = 0;
+    bool multi_threaded = !options["single-thread"].as<bool>();
     for ( string layername : board.list_layers() )
     {
-        layer_futures.push_back(std::async(std::launch::async,
+        layer_futures.push_back(std::async(multi_threaded ? std::launch::async : std::launch::deferred,
         [this, &options, layername, outputdir, layer_number]() {
           double xoffset;
           double yoffset;

@@ -353,7 +353,8 @@ options::options()
        ("preamble", po::value<string>(), "gcode preamble file, inserted at the very beginning.")
        ("postamble", po::value<string>(), "gcode postamble file, inserted before M9 and M2.")
        ("no-export", po::value<bool>()->default_value(false)->implicit_value(true), "skip the exporting process")
-       ("sanity-checks", po::value<bool>()->default_value(false)->implicit_value(true), "run sanity checks");
+       ("sanity-checks", po::value<bool>()->default_value(false)->implicit_value(true), "run sanity checks")
+       ("single-thread", po::value<bool>()->default_value(false)->implicit_value(true), "disable multi-threading");
 }
 
 /******************************************************************************/

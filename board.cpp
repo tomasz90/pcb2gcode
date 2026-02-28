@@ -42,6 +42,7 @@ using std::vector;
 #include <mutex>
 
 #include "bg_operators.hpp"
+#include "options.hpp"
 
 typedef pair<string, Layer> layer_t;
 
@@ -127,9 +128,10 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
 
     // board size calculated. create layers (in parallel)
     std::vector<std::future<pair<string, Layer>>> layer_futures;
+    bool multi_threaded = !options::get_vm()["single-thread"].as<bool>();
     for (const auto& prepared_layer : prepared_layers) {
       const auto layer_name = prepared_layer.first;
-      layer_futures.push_back(std::async(std::launch::async,
+      layer_futures.push_back(std::async(multi_threaded ? std::launch::async : std::launch::deferred,
         [&prepared_layers, layer_name, fill_outline = fill_outline,
          bounding_box = bounding_box, tsp_2opt = tsp_2opt,
          mill_feed_direction = mill_feed_direction,
