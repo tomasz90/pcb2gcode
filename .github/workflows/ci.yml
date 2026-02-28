@@ -372,7 +372,7 @@ jobs:
       run: |
         sudo apt-get install python3-setuptools
         pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest in_place
-        /usr/bin/python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode" -j ${NUM_CPUS} ${{ matrix.quick }}
+        /usr/bin/python3 ./integration_tests.py --pcb2gcode-binary "$(pwd)/pcb2gcode" --extra-args="--sanity-checks" -j ${NUM_CPUS} ${{ matrix.quick }}
     # Skip the Windows integration test because there are tiny discrepencies from expected outputs.
     #- name: Run integration tests on Windows
     #  if: matrix.geos != 'none' && matrix.geos != 'latest' && matrix.os == 'windows'

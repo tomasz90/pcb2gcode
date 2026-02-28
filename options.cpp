@@ -206,8 +206,8 @@ options::options()
         "list of comma-separated config files")
        ("help,?", "produce help message")
        ("version,V", "show the current software version");
-   po::options_description drilling_options("Drilling options, for making holes in the PCB");
 
+   po::options_description drilling_options("Drilling options, for making holes in the PCB");
    drilling_options.add_options()
        ("drill", po::value<string>(), "Excellon drill file")
        ("milldrill", po::value<bool>()->default_value(false)->implicit_value(true), "[DEPRECATED] Use min-milldrill-hole-diameter=0 instead")
@@ -352,7 +352,8 @@ options::options()
        ("preamble-text", po::value<string>(), "preamble text file, inserted at the very beginning as a comment.")
        ("preamble", po::value<string>(), "gcode preamble file, inserted at the very beginning.")
        ("postamble", po::value<string>(), "gcode postamble file, inserted before M9 and M2.")
-       ("no-export", po::value<bool>()->default_value(false)->implicit_value(true), "skip the exporting process");
+       ("no-export", po::value<bool>()->default_value(false)->implicit_value(true), "skip the exporting process")
+       ("sanity-checks", po::value<bool>()->default_value(false)->implicit_value(true), "run sanity checks");
 }
 
 /******************************************************************************/
