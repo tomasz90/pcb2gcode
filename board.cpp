@@ -38,6 +38,8 @@ using std::pair;
 #include <vector>
 using std::vector;
 
+#include <future>
+
 #include "bg_operators.hpp"
 
 typedef pair<string, Layer> layer_t;
@@ -84,7 +86,8 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
 
     // Calculate the maximum possible room needed by the PCB traces, for tiling later.
     const auto outline = prepared_layers.find("outline");
-    if (outline != prepared_layers.cend() &&
+    bool const has_outline = outline != prepared_layers.cend();
+    if (has_outline &&
         (get<0>(outline->second).get_bounding_box().min_corner() <
          get<0>(outline->second).get_bounding_box().max_corner())) {
       shared_ptr<Cutter> outline_mill = static_pointer_cast<Cutter>(get<1>(outline->second));
@@ -117,27 +120,42 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
       }
     }
 
-    // board size calculated. create layers
+    // board size calculated. create layers (in parallel)
+    std::vector<std::future<pair<string, Layer>>> layer_futures;
     for (const auto& prepared_layer : prepared_layers) {
-      // prepare the surface
-      GerberImporter const& importer = get<0>(prepared_layer.second);
-      const bool fill = fill_outline && prepared_layer.first == "outline";
+      const auto layer_name = prepared_layer.first;
+      layer_futures.push_back(std::async(std::launch::async,
+        [&prepared_layers, layer_name, fill_outline = fill_outline,
+         bounding_box = bounding_box, tsp_2opt = tsp_2opt,
+         mill_feed_direction = mill_feed_direction,
+         invert_gerbers = invert_gerbers,
+         render_paths_to_shapes = render_paths_to_shapes,
+         outputdir = outputdir]() {
+          // prepare the surface
+          auto const& prep = prepared_layers.at(layer_name);
+          GerberImporter const& importer = get<0>(prep);
+          const bool fill = fill_outline && layer_name == "outline";
 
-      Surface_vectorial surface(
-          bounding_box,
-          prepared_layer.first, outputdir, tsp_2opt,
-          mill_feed_direction, invert_gerbers,
-          render_paths_to_shapes || (prepared_layer.first == "outline"));
-      if (fill) {
-        surface.enable_filling();
-      }
-      surface.render(importer, get<1>(prepared_layer.second)->optimise);
-      Layer layer(prepared_layer.first,
-                  std::move(surface),
-                  get<1>(prepared_layer.second),
-                  get<2>(prepared_layer.second),
-                  get<3>(prepared_layer.second)); // see comment for prep_t in board.hpp
-      layers.insert(std::make_pair(layer.get_name(), layer));
+          Surface_vectorial surface(
+              bounding_box,
+              layer_name, outputdir, tsp_2opt,
+              mill_feed_direction, invert_gerbers,
+              render_paths_to_shapes || (layer_name == "outline"));
+          if (fill) {
+            surface.enable_filling();
+          }
+          surface.render(importer, get<1>(prep)->optimise);
+          Layer layer(layer_name,
+                      std::move(surface),
+                      get<1>(prep),
+                      get<2>(prep),
+                      get<3>(prep));
+          return std::make_pair(layer_name, layer);
+        }));
+    }
+    for (auto& f : layer_futures) {
+      auto name_and_layer = f.get();
+      layers.insert(std::make_pair(name_and_layer.first, name_and_layer.second));
     }
 
     // DEBUG output
@@ -146,7 +164,7 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
     }
 
     // mask layers with outline
-    if (outline != prepared_layers.cend() &&
+    if (has_outline &&
         (get<0>(outline->second).get_bounding_box().min_corner() <
          get<0>(outline->second).get_bounding_box().max_corner())) {
       Layer outline_layer = layers.at("outline");
