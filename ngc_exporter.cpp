@@ -21,9 +21,7 @@
  */
 
 #include "ngc_exporter.hpp"
-#include "options.hpp"
 #include <boost/algorithm/string.hpp>
-#include "bg_operators.hpp"
 #include <iostream>
 using std::cerr;
 using std::flush;
@@ -48,15 +46,13 @@ using std::ceil;
 using std::shared_ptr;
 using std::dynamic_pointer_cast;
 
-#include <iomanip>
-
 #include <boost/format.hpp>
 using boost::format;
 
 #include "units.hpp"
 
 NGC_Exporter::NGC_Exporter(Board&& board)
-    : board(std::move(board)), ocodes(1), globalVars(100) {}
+    : board(std::move(board)) {}
 
 /******************************************************************************/
 /*
@@ -86,8 +82,11 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
     
     tileInfo = Tiling::generateTileInfo( options, board.get_height(), board.get_width() );
 
+    int layer_number = 0;
     for ( string layername : board.list_layers() )
     {
+        double xoffset;
+        double yoffset;
         if (options["zero-start"].as<bool>()) {
           xoffset = board.get_bounding_box().min_corner().x();
           yoffset = board.get_bounding_box().min_corner().y();
@@ -111,7 +110,9 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
         boost::optional<autoleveller> leveller = boost::none;
         if ((options["al-front"].as<bool>() && layername == "front") ||
             (options["al-back"].as<bool>() && layername == "back")) {
-          leveller.emplace(options, &ocodes, &globalVars,
+          leveller.emplace(options,
+                           uniqueCodes(1 + layer_number * 100),
+                           uniqueCodes(100 + layer_number * 100), // 500 and up are used by the leveller.
                            xoffset, yoffset, tileInfo);
         }
 
@@ -119,7 +120,7 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
         option_name << layername << "-output";
         string of_name = build_filename(outputdir, options[option_name.str()].as<string>());
         cout << "Exporting " << layername << "... " << flush;
-        export_layer(board.get_layer(layername), of_name, leveller);
+        export_layer(board.get_layer(layername), of_name, leveller, xoffset, yoffset);
         cout << "DONE." << " (Height: " << board.get_height() * cfactor
              << (bMetricoutput ? "mm" : "in") << " Width: "
              << board.get_width() * cfactor << (bMetricoutput ? "mm" : "in")
@@ -127,6 +128,7 @@ void NGC_Exporter::export_all(boost::program_options::variables_map& options)
         if (layername == "outline")
             cout << " The board should be cut from the " << ( workSide(options, "cut") ? "FRONT" : "BACK" ) << " side. ";
         cout << endl;
+        layer_number++;
     }
 }
 
@@ -243,7 +245,8 @@ void NGC_Exporter::isolation_milling(std::ofstream& of, RoutingMill const& mill,
 }
 
 
-void NGC_Exporter::export_layer(Layer& layer, string of_name, boost::optional<autoleveller> leveller) {
+void NGC_Exporter::export_layer(Layer& layer, string of_name, boost::optional<autoleveller> leveller,
+                                double xoffset, double yoffset) {
     string layername = layer.get_name();
     shared_ptr<RoutingMill> mill = layer.get_manufacturer();
     vector<pair<coordinate_type_fp, multi_linestring_type_fp>> all_toolpaths = layer.get_toolpaths();
@@ -251,9 +254,6 @@ void NGC_Exporter::export_layer(Layer& layer, string of_name, boost::optional<au
     if (all_toolpaths.size() < 1) {
       return; // Nothing to do.
     }
-
-    globalVars.getUniqueCode();
-    globalVars.getUniqueCode();
 
     // open output file
     std::ofstream of;

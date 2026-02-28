@@ -29,21 +29,19 @@
 #include <string>
 #include <fstream>
 #include <vector>
-#include <memory>
 #include <boost/program_options.hpp>
 
 #include "geometry.hpp"
 #include "unique_codes.hpp"
 #include "common.hpp"
 #include "tile.hpp"
-#include "options.hpp"
 
 class autoleveller
 {
 public:
     // The constructor just initialize the common parameters variables (parameters are in inches)
-    autoleveller( const boost::program_options::variables_map &options, uniqueCodes *ocodes, 
-                  uniqueCodes *globalVars, double xoffset, double yoffset,
+    autoleveller( const boost::program_options::variables_map &options, uniqueCodes ocodes, 
+                  uniqueCodes globalVars, double xoffset, double yoffset,
                   const struct Tiling::TileInfo tileInfo );
 
     // prepareWorkarea computes the area of the milling project and computes the required number of probe
@@ -146,7 +144,7 @@ protected:
     double XProbeDist;
     double YProbeDist;
     double averageProbeDist;
-    uniqueCodes *ocodes;
+    uniqueCodes ocodes;
 
     std::string callSub2[3];
 
