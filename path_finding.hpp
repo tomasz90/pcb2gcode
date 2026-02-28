@@ -78,6 +78,7 @@ extern inline bool is_intersecting(const point_type_fp& p0, const point_type_fp&
 }
 
 class PathFindingSurface;
+class PathFindingSurfaceWithTries;
 
 // From: http://geomalgorithms.com/a03-_inclusion.html
 extern inline bool point_in_ring(const point_type_fp& point, const ring_type_fp& ring) {
@@ -141,7 +142,7 @@ class Neighbors {
  public:
   class iterator {
    public:
-    iterator(const Neighbors* neighbors, size_t point_index) :
+    iterator(Neighbors* neighbors, size_t point_index) :
       neighbors(neighbors),
       point_index(point_index) {}
     iterator operator++();
@@ -149,7 +150,7 @@ class Neighbors {
     bool operator==(const iterator& other) const;
     const point_type_fp& operator*() const;
    private:
-    const Neighbors* neighbors;
+    Neighbors* neighbors;
     size_t point_index;
   };
 
@@ -157,10 +158,10 @@ class Neighbors {
             const point_type_fp& current,
             const coordinate_type_fp& max_path_length,
             const std::vector<point_type_fp>& vertices,
-            const PathFindingSurface* pfs);
-  inline bool is_neighbor(const point_type_fp p) const;
-  iterator begin() const;
-  iterator end() const;
+            PathFindingSurfaceWithTries* pfs);
+  inline bool is_neighbor(const point_type_fp p);
+  iterator begin();
+  iterator end();
   const point_type_fp& start;
   const point_type_fp& goal;
   const point_type_fp& current;
@@ -168,7 +169,7 @@ class Neighbors {
  private:
   const coordinate_type_fp max_path_length_squared;
   const std::vector<point_type_fp>& vertices;
-  const PathFindingSurface* pfs;
+  PathFindingSurfaceWithTries* pfs;
 };
 
 class PathFindingSurface {
@@ -181,11 +182,6 @@ class PathFindingSurface {
                      const multi_polygon_type_fp& keep_out,
                      const coordinate_type_fp tolerance);
   const boost::optional<SearchKey>& in_surface(point_type_fp p) const;
-  void decrement_tries() const;
-  Neighbors neighbors(const point_type_fp& start, const point_type_fp& goal,
-                      const coordinate_type_fp& max_path_length,
-                      SearchKey search_key,
-                      const point_type_fp& current) const;
   // Find a path from start to goal in the available surface, limited
   // in operations.
   boost::optional<linestring_type_fp> find_path(
@@ -199,17 +195,14 @@ class PathFindingSurface {
       const coordinate_type_fp& max_path_length,
       const boost::optional<size_t>& max_tries,
       SearchKey search_key) const;
-  const std::vector<point_type_fp>& vertices(SearchKey search_key) const;
-  multi_polygon_type_fp get_surface() const;
 
  private:
   friend class Neighbors;
+  friend class PathFindingSurfaceWithTries;
+  multi_polygon_type_fp get_surface() const;
+  const std::vector<point_type_fp>& vertices(SearchKey search_key) const;
   bool in_surface(
       const point_type_fp& a, const point_type_fp& b) const;
-  boost::optional<linestring_type_fp> find_path(
-      const point_type_fp& start, const point_type_fp& goal,
-      const coordinate_type_fp& max_path_length,
-      SearchKey search_key) const;
 
   // Each shape corresponses to an element in all_vertices and they
   // are in the same order.  The boolean indicates if this is the
@@ -233,6 +226,32 @@ class PathFindingSurface {
   mutable std::unordered_map<SearchKey, std::vector<point_type_fp>> vertices_memo;
   mutable boost::optional<size_t> tries; // This is not great to be mutable.
 };
+
+class PathFindingSurfaceWithTries {
+  public:
+   PathFindingSurfaceWithTries(PathFindingSurface const& path_finding_surface, const boost::optional<size_t>& tries) 
+       : path_finding_surface(path_finding_surface), tries(tries) {}
+   void decrement_tries();
+   bool in_surface(const point_type_fp& a, const point_type_fp& b) const {
+     return path_finding_surface.in_surface(a, b);
+   }
+  private:
+  friend class PathFindingSurface;
+   const std::vector<point_type_fp>& vertices(SearchKey search_key) const {
+     return path_finding_surface.vertices(search_key);
+   }
+   boost::optional<linestring_type_fp> find_path(
+     const point_type_fp& start, const point_type_fp& goal,
+     const coordinate_type_fp& max_path_length,
+     SearchKey search_key);
+   Neighbors neighbors(const point_type_fp& start, const point_type_fp& goal,
+                       const coordinate_type_fp& max_path_length,
+                       SearchKey search_key,
+                       const point_type_fp& current);
+
+   PathFindingSurface const& path_finding_surface;
+   boost::optional<size_t> tries;
+ };
 
 struct GiveUp {};
 

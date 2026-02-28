@@ -62,7 +62,7 @@ Neighbors::Neighbors(const point_type_fp& start, const point_type_fp& goal,
                      const point_type_fp& current,
                      const coordinate_type_fp& max_path_length,
                      const std::vector<point_type_fp>& vertices,
-                     const PathFindingSurface* pfs) :
+                     PathFindingSurfaceWithTries* pfs) :
     start(start),
     goal(goal),
     current(current),
@@ -72,7 +72,7 @@ Neighbors::Neighbors(const point_type_fp& start, const point_type_fp& goal,
 
 // Returns a valid neighbor index that is either the one provided or
 // the next higher valid one.
-inline bool Neighbors::is_neighbor(const point_type_fp p) const {
+inline bool Neighbors::is_neighbor(const point_type_fp p) {
   if (p == current) {
     return false;
   }
@@ -86,7 +86,7 @@ inline bool Neighbors::is_neighbor(const point_type_fp p) const {
   return true;
 }
 
-Neighbors::iterator Neighbors::begin() const {
+Neighbors::iterator Neighbors::begin() {
   auto ret = iterator(this, 0);
   if (ret == end()) {
     // Can't dereferfence the end.
@@ -102,7 +102,7 @@ Neighbors::iterator Neighbors::begin() const {
   }
 }
 
-Neighbors::iterator Neighbors::end() const {
+Neighbors::iterator Neighbors::end() {
   return iterator(this, vertices.size()+2);
 }
 
@@ -356,7 +356,7 @@ const boost::optional<SearchKey>& PathFindingSurface::in_surface(point_type_fp p
   return point_in_surface_memo.emplace(p, ring_indices_cache.size()-1).first->second;
 }
 
-void PathFindingSurface::decrement_tries() const {
+void PathFindingSurfaceWithTries::decrement_tries() {
   if (tries) {
     if (*tries == 0) {
       throw GiveUp();
@@ -384,10 +384,10 @@ bool PathFindingSurface::in_surface(
 // Return all possible neighbors of current.  A neighbor can be
 // start, end, or any of the points in all_vertices.  But only the
 // ones that are in_surface are returned.
-Neighbors PathFindingSurface::neighbors(const point_type_fp& start, const point_type_fp& goal,
-                                        const coordinate_type_fp& max_path_length,
-                                        SearchKey search_key,
-                                        const point_type_fp& current) const {
+Neighbors PathFindingSurfaceWithTries::neighbors(const point_type_fp& start, const point_type_fp& goal,
+                                                 const coordinate_type_fp& max_path_length,
+                                                 SearchKey search_key,
+                                                 const point_type_fp& current) {
   return Neighbors(start, goal, current, max_path_length, vertices(search_key), this);
 }
 
@@ -405,10 +405,10 @@ linestring_type_fp build_path(
   bg::reverse(result);
   return result;
 }
-optional<linestring_type_fp> PathFindingSurface::find_path(
+optional<linestring_type_fp> PathFindingSurfaceWithTries::find_path(
     const point_type_fp& start, const point_type_fp& goal,
     const coordinate_type_fp& max_path_length,
-    SearchKey search_key) const {
+    SearchKey search_key) {
   // Connect if a direct connection is possible.  This also takes care
   // of the case where start == goal.
   try {
@@ -447,7 +447,7 @@ optional<linestring_type_fp> PathFindingSurface::find_path(
       continue;
     }
     try {
-      const auto current_neighbors = neighbors(
+      auto current_neighbors = neighbors(
           start, goal,
           max_path_length - g_score.at(current),
           search_key,
@@ -476,29 +476,21 @@ optional<linestring_type_fp> PathFindingSurface::find_path(
     const coordinate_type_fp& max_path_length,
     const boost::optional<size_t>& max_tries,
     SearchKey search_key) const {
-  if (max_tries) {
-    if (*max_tries == 0) {
-      return boost::none;
-    }
-    tries.emplace(*max_tries);
-  } else {
-    tries = boost::none;
+  if (max_tries && *max_tries == 0) {
+    return boost::none;
   }
-  return find_path(start, goal, max_path_length, search_key);
+  PathFindingSurfaceWithTries pfs_with_tries(*this, max_tries);
+  return pfs_with_tries.find_path(start, goal, max_path_length, search_key);
 }
 
 optional<linestring_type_fp> PathFindingSurface::find_path(
     const point_type_fp& start, const point_type_fp& goal,
     const coordinate_type_fp& max_path_length,
     const boost::optional<size_t>& max_tries) const {
-  if (max_tries) {
-    if (*max_tries == 0) {
-      return boost::none;
-    }
-    tries.emplace(*max_tries);
-  } else {
-    tries = boost::none;
+  if (max_tries && *max_tries == 0) {
+    return boost::none;
   }
+  PathFindingSurfaceWithTries pfs_with_tries(*this, max_tries);
 
   auto ring_indices = in_surface(start);
   if (!ring_indices) {
@@ -509,7 +501,7 @@ optional<linestring_type_fp> PathFindingSurface::find_path(
     // Either goal is not in the surface or it's in a region unreachable by start.
     return boost::none;
   }
-  return find_path(start, goal, max_path_length, *ring_indices);
+  return pfs_with_tries.find_path(start, goal, max_path_length, *ring_indices);
 }
 
 const std::vector<point_type_fp>&
