@@ -3,6 +3,8 @@
 #include <vector>
 #include <utility>
 #include <unordered_set>
+#include <unordered_map>
+#include <cmath>
 
 #include "segmentize.hpp"
 #include "eulerian_paths.hpp"
@@ -64,6 +66,14 @@ class path_and_direction {
   bool operator==(const path_and_direction& other) const {
     return path_index == other.path_index && side == other.side;
   }
+  bool operator<(const path_and_direction& other) const {
+    return std::tie(path_index, side) < std::tie(other.path_index, other.side);
+  }
+  friend std::ostream& operator<<(std::ostream& out, const path_and_direction& p) {
+    out << "path_index: " << p.path_index << ", side: " << p.side;
+    return out;
+  }
+
  private:
   size_t path_index;
   Side side;
@@ -124,6 +134,36 @@ class linestring_iterator {
   boost::variant<typename linestring_t::const_iterator, typename linestring_t::const_reverse_iterator> it;
 };
 
+template <typename point_t>
+double get_cosine_of_angle_impl(const point_t& p0, const point_t& p1, const point_t& p2) {
+  auto delta_x10 = p0.x() - p1.x();
+  auto delta_y10 = p0.y() - p1.y();
+  auto delta_x12 = p2.x() - p1.x();
+  auto delta_y12 = p2.y() - p1.y();
+  auto length_product = std::sqrt((delta_x10*delta_x10 + delta_y10*delta_y10)) * std::sqrt((delta_x12*delta_x12 + delta_y12*delta_y12));
+  auto dot_product = (delta_x10*delta_x12) + (delta_y10*delta_y12);
+  return dot_product/length_product;
+}
+
+double get_cosine_of_angle_impl(const int& p0, const int& p1, const int& p2) {
+  double ret;
+  if (p0 == p1 || p1 == p2) {
+    ret = 0;  // Undefined.
+  } else if (p0 < p1 && p1 < p2) {
+    ret = -1; // Straight line.
+  } else if (p0 > p1 && p1 > p2) {
+    ret = -1; // Straight line.
+  } else {
+    ret = 1; // Angle 0
+  }
+  return ret;
+}
+
+template <typename point_t>
+double get_cosine_of_angle(const point_t& p0, const point_t& p1, const point_t& p2) {
+  return get_cosine_of_angle_impl(p0, p1, p2);
+}
+
 /* This class holds on to all the paths and uses std::multimap internally to
  * make it quick to look up which paths extend from a given vertex and in which
  * direction. */
@@ -151,6 +191,11 @@ class path_manager {
         end_vertex_to_unvisited_path_index.emplace(end, path_and_direction(index, Side::back));
       }
     }
+    for (auto const& bidi_edge : bidi_vertex_to_unvisited_path_index) {
+      auto const score = compute_bidi_conversion_score(bidi_edge.second);
+      bidi_conversion_score_cache.emplace(bidi_edge.second, score);
+      bidi_conversion_sorted_scores.emplace(score, bidi_edge.second);
+    }
   }
 
   void bidi_to_directional(path_and_direction index_and_side, bool flip) {
@@ -163,6 +208,28 @@ class path_manager {
     auto const end_vertex = get_back(index_and_side);
     start_vertex_to_unvisited_path_index.emplace(start_vertex, path_and_direction(index_and_side.path_index, index_and_side.side));
     end_vertex_to_unvisited_path_index.emplace(end_vertex, path_and_direction(index_and_side.path_index, !index_and_side.side));
+    // Converting an edge from bidi to directional invalidates cached scores for all bidi edges
+    // that start or end at the endpoints of the converted edge.
+    auto start_range = bidi_vertex_to_unvisited_path_index.equal_range(start_vertex);
+    for (auto it = start_range.first; it != start_range.second; ++it) {
+      auto const old_score = bidi_conversion_score_cache.at(it->second);
+      auto const new_score = compute_bidi_conversion_score(it->second);
+      if (old_score != new_score) {
+        bidi_conversion_score_cache[it->second] = new_score; // Replace the old score with the new one.
+        bidi_conversion_sorted_scores.erase({old_score, it->second}); // Remove the old score from the sorted scores.
+        bidi_conversion_sorted_scores.emplace(new_score, it->second); // Add the new score to the sorted scores.
+      }
+    }
+    auto end_range = bidi_vertex_to_unvisited_path_index.equal_range(end_vertex);
+    for (auto it = end_range.first; it != end_range.second; ++it) {
+      auto const old_score = bidi_conversion_score_cache.at(it->second);
+      auto const new_score = compute_bidi_conversion_score(it->second);
+      if (old_score != new_score) {
+        bidi_conversion_score_cache[it->second] = new_score; // Replace the old score with the new one.
+        bidi_conversion_sorted_scores.erase({old_score, it->second}); // Remove the old score from the sorted scores.
+        bidi_conversion_sorted_scores.emplace(new_score, it->second); // Add the new score to the sorted scores.
+      }
+    }
   }
   auto& get_all_vertices() const {
     return all_vertices;
@@ -188,10 +255,17 @@ class path_manager {
                       &end_vertex_to_unvisited_path_index,
                       &bidi_vertex_to_unvisited_path_index}) {
       for (auto& vertex : {path.front(), path.back()}) {
-        auto range = map->equal_range(vertex);
-        for (auto it = range.first; it != range.second; it++) {
-          if (it->second.path_index == index_and_side.path_index) {
-            map->erase(it);
+        auto vertex_range = map->equal_range(vertex);
+        for (auto vertex_it = vertex_range.first; vertex_it != vertex_range.second; vertex_it++) {
+          if (vertex_it->second.path_index == index_and_side.path_index) {
+            path_and_direction const to_erase = vertex_it->second; // Save value before iterator invalidation.
+            map->erase(vertex_it);
+            // If it happens to be a bidi edge, remove it from the cache.
+            if (map == &bidi_vertex_to_unvisited_path_index) {
+              auto const score = bidi_conversion_score_cache.at(to_erase);
+              bidi_conversion_score_cache.erase(to_erase);
+              bidi_conversion_sorted_scores.erase({score, to_erase});
+            }
             break;
           }
         }
@@ -235,6 +309,49 @@ class path_manager {
     }
     return ret;
   }
+
+  // Returns the bidi edge with the lowest conversion score. Call only when there is at least one bidi edge.
+  path_and_direction choose_best_bidi_edge_to_convert() const {
+    return bidi_conversion_sorted_scores.begin()->second;
+  }
+
+private:
+  // Score for choosing which bidi edge to convert to directional next. Lower is better.
+  std::pair<int, double> compute_bidi_conversion_score(path_and_direction bidi_edge) const {
+    auto const out_edges_at_end = start_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
+    auto const in_edges_at_end = end_vertex_to_unvisited_path_index.count(get_back(bidi_edge));
+    auto const in_edges_at_start = end_vertex_to_unvisited_path_index.count(get_front(bidi_edge));
+    auto const out_edges_at_start = start_vertex_to_unvisited_path_index.count(get_front(bidi_edge));
+    auto const imbalance = (in_edges_at_end < out_edges_at_end ? 0 : 1) +
+                           (out_edges_at_start < in_edges_at_start ? 0 : 1);
+    double best_start_cosine = 1;
+    auto start_range = start_vertex_to_unvisited_path_index.equal_range(get_back(bidi_edge));
+    for (auto it = start_range.first; it != start_range.second; ++it) {
+      auto const& option_edge = it->second;
+      auto const& p0 = get_point(bidi_edge, -2);
+      auto const& p1 = get_point(option_edge, 0);
+      auto const& p2 = get_point(option_edge, 1);
+      auto const cosine_of_angle = get_cosine_of_angle(p0, p1, p2);
+      if (cosine_of_angle < best_start_cosine) {
+        best_start_cosine = cosine_of_angle;
+      }
+    }
+    double best_end_cosine = 1;
+    auto end_range = end_vertex_to_unvisited_path_index.equal_range(get_front(bidi_edge));
+    for (auto it = end_range.first; it != end_range.second; ++it) {
+      auto const& option_edge = it->second;
+      auto const& p0 = get_point(option_edge, 1);
+      auto const& p1 = get_point(option_edge, 0);
+      auto const& p2 = get_point(bidi_edge, 1);
+      auto const cosine_of_angle = get_cosine_of_angle(p0, p1, p2);
+      if (cosine_of_angle < best_end_cosine) {
+        best_end_cosine = cosine_of_angle;
+      }
+    }
+    auto const result = std::make_pair(imbalance, best_start_cosine + best_end_cosine);
+    return result;
+  }
+
 private:
   std::vector<std::pair<linestring_t, bool>> const& paths;
   // Create a map from vertex to each path that start at that vertex.
@@ -254,6 +371,8 @@ private:
   std::multimap<point_t, path_and_direction> end_vertex_to_unvisited_path_index;
   // Only the ones that have at least one potential edge leading out.
   std::set<point_t> all_vertices;
+  mutable std::unordered_map<path_and_direction, std::pair<int, double>> bidi_conversion_score_cache;
+  mutable std::set<std::pair<std::pair<int, double>, path_and_direction>> bidi_conversion_sorted_scores;
 };
 
 /* This finds a minimal number of eulerian paths that cover the input.  The
@@ -319,60 +438,17 @@ class eulerian_paths {
         // Remove the vertex from the set of vertices to examine.
         vertices_to_examine.erase(vertex);
       }
-      if (paths.get_bidi_vertex_to_unvisited_path_index().size() > 0) {
-        // We've examined all vertices and converted as many bidi edges to directional edges as possible
-        // but there are still some bidi edges left.
-        // Pick a bidi edge that has the best score from an edge already in there.
-        // Score is how unbalanced this would cause the graph to be and then angle.  Lowest is best.
-        std::pair<long, double> best_score(std::numeric_limits<long>::max(), std::numeric_limits<double>::max());
-        path_and_direction best_path_index_and_side = paths.get_bidi_vertex_to_unvisited_path_index().begin()->second;
-        for (auto const& bidi_edge_and_path : paths.get_bidi_vertex_to_unvisited_path_index()) {
-          auto const& bidi_edge = bidi_edge_and_path.second;
-          auto const out_edges_at_end = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
-          auto const in_edges_at_end = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_back(bidi_edge));
-          auto const in_edges_at_start = paths.get_end_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-          auto const out_edges_at_start = paths.get_start_vertex_to_unvisited_path_index().count(paths.get_front(bidi_edge));
-          // Find everything that starts at the end of the bidi_edge.  We aim to keep the number of out edges equal to the number of in edges
-          // at each vertex.
-          auto const start_options = paths.get_start_vertex_to_unvisited_path_index().equal_range(paths.get_back(bidi_edge));
-          for (auto option = start_options.first; option != start_options.second; option++) {
-            auto const& option_edge = option->second;
-            auto const &p0 = paths.get_point(bidi_edge, -2);
-            auto const &p1 = paths.get_point(option_edge, 0);
-            auto const &p2 = paths.get_point(option_edge, 1);
-            auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
-                                   std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
-            auto const score = std::make_pair(imbalance, cosine_of_angle);
-            // Lowest is best.
-            if (score < best_score) {
-              best_score = score;
-              best_path_index_and_side = bidi_edge;
-            }
-          }
-          // Find everything that ends at the start of bidi_edge_path.
-          auto const end_options = paths.get_end_vertex_to_unvisited_path_index().equal_range(paths.get_front(bidi_edge));
-          for (auto option = end_options.first; option != end_options.second; option++) {
-            auto const& option_edge = option->second;
-            auto const &p0 = paths.get_point(option_edge, 1); // The point one away from vertex.
-            auto const &p1 = paths.get_point(option_edge, 0); // The point at vertex.
-            auto const &p2 = paths.get_point(bidi_edge, 1);
-            auto const cosine_of_angle = get_cosine_of_angle<point_t>(p0, p1, p2);
-            auto const imbalance = std::abs(static_cast<long>(out_edges_at_end) - static_cast<long>(in_edges_at_end + 1)) +
-                                   std::abs(static_cast<long>(out_edges_at_start + 1) - static_cast<long>(in_edges_at_start));
-            auto const score = std::make_pair(imbalance, cosine_of_angle);
-            // Lowest is best.
-            if (score < best_score) {
-              best_score = score;
-              best_path_index_and_side = bidi_edge;
-            }
-          }
-        }
-        paths.bidi_to_directional(best_path_index_and_side, false);
-        // The endpoints of the bidi edge need to be re-examined.
-        vertices_to_examine.insert(paths.get_front(best_path_index_and_side));
-        vertices_to_examine.insert(paths.get_back(best_path_index_and_side));
+      if (paths.get_bidi_vertex_to_unvisited_path_index().size() == 0) {
+        // We've examined all vertices and converted as many bidi edges to
+        // directional edges as possible and there are no bidi edges left.
+        break;
       }
+      // There are still some bidi edges left. Pick the one with the best conversion score.
+      path_and_direction best_path_index_and_side = paths.choose_best_bidi_edge_to_convert();
+      paths.bidi_to_directional(best_path_index_and_side, false);
+      // The endpoints of the bidi edge need to be re-examined.
+      vertices_to_examine.insert(paths.get_front(best_path_index_and_side));
+      vertices_to_examine.insert(paths.get_back(best_path_index_and_side));
     }
 
     // All edges are now directional.
@@ -422,36 +498,6 @@ class eulerian_paths {
     auto out_edges = paths.get_start_vertex_to_unvisited_path_index().count(vertex);
     auto in_edges = paths.get_end_vertex_to_unvisited_path_index().count(vertex);
     return out_edges > in_edges;
-  }
-
-  template <typename p_t>
-  double get_cosine_of_angle(const point_t& p0, const point_t& p1, const point_t& p2, identity<p_t>) {
-    auto delta_x10 = p0.x() - p1.x();
-    auto delta_y10 = p0.y() - p1.y();
-    auto delta_x12 = p2.x() - p1.x();
-    auto delta_y12 = p2.y() - p1.y();
-    auto length_product = sqrt((delta_x10*delta_x10 + delta_y10*delta_y10)) * sqrt((delta_x12*delta_x12 + delta_y12*delta_y12));
-    auto dot_product = (delta_x10*delta_x12) + (delta_y10*delta_y12);
-    return dot_product/length_product;
-  }
-
-  double get_cosine_of_angle(const int& p0, const int& p1, const int& p2, identity<int>) {
-    double ret;
-    if (p0 == p1 || p1 == p2) {
-      ret = 0;  // Undefined.
-    } else if (p0 < p1 && p1 < p2) {
-      ret = -1; // Straight line.
-    } else if (p0 > p1 && p1 > p2) {
-      ret = -1; // Straight line.
-    } else {
-      ret = 1; // Angle 0
-    }
-    return ret;
-  }
-
-  template <typename p_t>
-  double get_cosine_of_angle(const p_t& p0, const p_t& p1, const p_t& p2) {
-    return get_cosine_of_angle(p0, p1, p2, identity<p_t>());
   }
 
   // Higher score is better.
