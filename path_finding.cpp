@@ -356,15 +356,6 @@ const boost::optional<SearchKey>& PathFindingSurface::in_surface(point_type_fp p
   return point_in_surface_memo.emplace(p, ring_indices_cache.size()-1).first->second;
 }
 
-void PathFindingSurfaceWithTries::decrement_tries() {
-  if (tries) {
-    if (*tries == 0) {
-      throw GiveUp();
-    }
-    (*tries)--;
-  }
-}
-
 // Return true if this edge from a to b is part of the path finding surface.
 bool PathFindingSurface::in_surface(
     const point_type_fp& a, const point_type_fp& b) const {
@@ -381,16 +372,6 @@ bool PathFindingSurface::in_surface(
   return !found_intersection;
 }
 
-// Return all possible neighbors of current.  A neighbor can be
-// start, end, or any of the points in all_vertices.  But only the
-// ones that are in_surface are returned.
-Neighbors PathFindingSurfaceWithTries::neighbors(const point_type_fp& start, const point_type_fp& goal,
-                                                 const coordinate_type_fp& max_path_length,
-                                                 SearchKey search_key,
-                                                 const point_type_fp& current) {
-  return Neighbors(start, goal, current, max_path_length, vertices(search_key), this);
-}
-
 // Return a path from the start to the current.  Always return at
 // least two points.
 linestring_type_fp build_path(
@@ -405,6 +386,63 @@ linestring_type_fp build_path(
   bg::reverse(result);
   return result;
 }
+
+optional<linestring_type_fp> PathFindingSurface::find_path(
+    const point_type_fp& start, const point_type_fp& goal,
+    const coordinate_type_fp& max_path_length,
+    const boost::optional<size_t>& max_tries,
+    SearchKey search_key) const {
+  if (max_tries && *max_tries == 0) {
+    return boost::none;
+  }
+  PathFindingSurfaceWithTries pfs_with_tries(*this, max_tries);
+  return pfs_with_tries.find_path(start, goal, max_path_length, search_key);
+}
+
+optional<linestring_type_fp> PathFindingSurface::find_path(
+    const point_type_fp& start, const point_type_fp& goal,
+    const coordinate_type_fp& max_path_length,
+    const boost::optional<size_t>& max_tries) const {
+  if (max_tries && *max_tries == 0) {
+    return boost::none;
+  }
+  PathFindingSurfaceWithTries pfs_with_tries(*this, max_tries);
+
+  auto ring_indices = in_surface(start);
+  if (!ring_indices) {
+    // Start is not in the surface.
+    return boost::none;
+  }
+  if (ring_indices != in_surface(goal)) {
+    // Either goal is not in the surface or it's in a region unreachable by start.
+    return boost::none;
+  }
+  return pfs_with_tries.find_path(start, goal, max_path_length, *ring_indices);
+}
+
+const std::vector<point_type_fp>&
+PathFindingSurface::vertices(SearchKey search_key) const {
+  auto memoized_result = vertices_memo.find(search_key);
+  if (memoized_result != vertices_memo.cend()) {
+    return memoized_result->second;
+  }
+  std::vector<point_type_fp> ret;
+  const auto& vertices = all_vertices;
+  const auto& ring_indices = ring_indices_cache.at(search_key);
+  for (size_t poly_index = 0; poly_index < ring_indices.size() ; poly_index++) {
+    // This is the poly to look at.
+    const auto& poly_ring_index = ring_indices[poly_index];
+    // These are the vertices for that poly.
+    const auto& poly_vertices = vertices[poly_ring_index.first];
+    for (size_t ring_index = 0; ring_index < poly_ring_index.second.size(); ring_index++) {
+      const auto& ring_ring_index = poly_ring_index.second[ring_index];
+      const auto& ring_vertices = poly_vertices[ring_ring_index.first];
+      ret.insert(ret.cend(), ring_vertices.cbegin(), ring_vertices.cend());
+    }
+  }
+  return vertices_memo.emplace(search_key, ret).first->second;
+}
+
 optional<linestring_type_fp> PathFindingSurfaceWithTries::find_path(
     const point_type_fp& start, const point_type_fp& goal,
     const coordinate_type_fp& max_path_length,
@@ -469,62 +507,6 @@ optional<linestring_type_fp> PathFindingSurfaceWithTries::find_path(
     closed_set.insert(current);
   }
   return boost::none;
-}
-
-optional<linestring_type_fp> PathFindingSurface::find_path(
-    const point_type_fp& start, const point_type_fp& goal,
-    const coordinate_type_fp& max_path_length,
-    const boost::optional<size_t>& max_tries,
-    SearchKey search_key) const {
-  if (max_tries && *max_tries == 0) {
-    return boost::none;
-  }
-  PathFindingSurfaceWithTries pfs_with_tries(*this, max_tries);
-  return pfs_with_tries.find_path(start, goal, max_path_length, search_key);
-}
-
-optional<linestring_type_fp> PathFindingSurface::find_path(
-    const point_type_fp& start, const point_type_fp& goal,
-    const coordinate_type_fp& max_path_length,
-    const boost::optional<size_t>& max_tries) const {
-  if (max_tries && *max_tries == 0) {
-    return boost::none;
-  }
-  PathFindingSurfaceWithTries pfs_with_tries(*this, max_tries);
-
-  auto ring_indices = in_surface(start);
-  if (!ring_indices) {
-    // Start is not in the surface.
-    return boost::none;
-  }
-  if (ring_indices != in_surface(goal)) {
-    // Either goal is not in the surface or it's in a region unreachable by start.
-    return boost::none;
-  }
-  return pfs_with_tries.find_path(start, goal, max_path_length, *ring_indices);
-}
-
-const std::vector<point_type_fp>&
-PathFindingSurface::vertices(SearchKey search_key) const {
-  auto memoized_result = vertices_memo.find(search_key);
-  if (memoized_result != vertices_memo.cend()) {
-    return memoized_result->second;
-  }
-  std::vector<point_type_fp> ret;
-  const auto& vertices = all_vertices;
-  const auto& ring_indices = ring_indices_cache.at(search_key);
-  for (size_t poly_index = 0; poly_index < ring_indices.size() ; poly_index++) {
-    // This is the poly to look at.
-    const auto& poly_ring_index = ring_indices[poly_index];
-    // These are the vertices for that poly.
-    const auto& poly_vertices = vertices[poly_ring_index.first];
-    for (size_t ring_index = 0; ring_index < poly_ring_index.second.size(); ring_index++) {
-      const auto& ring_ring_index = poly_ring_index.second[ring_index];
-      const auto& ring_vertices = poly_vertices[ring_ring_index.first];
-      ret.insert(ret.cend(), ring_vertices.cbegin(), ring_vertices.cend());
-    }
-  }
-  return vertices_memo.emplace(search_key, ret).first->second;
 }
 
 } //namespace path_finding

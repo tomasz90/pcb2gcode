@@ -227,33 +227,45 @@ class PathFindingSurface {
   mutable boost::optional<size_t> tries; // This is not great to be mutable.
 };
 
+struct GiveUp {};
+
 class PathFindingSurfaceWithTries {
-  public:
-   PathFindingSurfaceWithTries(PathFindingSurface const& path_finding_surface, const boost::optional<size_t>& tries) 
-       : path_finding_surface(path_finding_surface), tries(tries) {}
-   void decrement_tries();
+ public:
+  PathFindingSurfaceWithTries(PathFindingSurface const& path_finding_surface, const boost::optional<size_t>& tries) 
+      : path_finding_surface(path_finding_surface), tries(tries) {}
+  void decrement_tries() {
+    if (tries) {
+      if (*tries == 0) {
+        throw GiveUp();
+      }
+      (*tries)--;
+    }
+  }
    bool in_surface(const point_type_fp& a, const point_type_fp& b) const {
      return path_finding_surface.in_surface(a, b);
    }
-  private:
+ private:
   friend class PathFindingSurface;
-   const std::vector<point_type_fp>& vertices(SearchKey search_key) const {
-     return path_finding_surface.vertices(search_key);
-   }
-   boost::optional<linestring_type_fp> find_path(
-     const point_type_fp& start, const point_type_fp& goal,
-     const coordinate_type_fp& max_path_length,
-     SearchKey search_key);
-   Neighbors neighbors(const point_type_fp& start, const point_type_fp& goal,
-                       const coordinate_type_fp& max_path_length,
-                       SearchKey search_key,
-                       const point_type_fp& current);
+  const std::vector<point_type_fp>& vertices(SearchKey search_key) const {
+    return path_finding_surface.vertices(search_key);
+  }
+  boost::optional<linestring_type_fp> find_path(
+    const point_type_fp& start, const point_type_fp& goal,
+    const coordinate_type_fp& max_path_length,
+    SearchKey search_key);
+  // Return all possible neighbors of current.  A neighbor can be
+  // start, end, or any of the points in all_vertices.  But only the
+  // ones that are in_surface are returned.
+  Neighbors neighbors(const point_type_fp& start, const point_type_fp& goal,
+                      const coordinate_type_fp& max_path_length,
+                      SearchKey search_key,
+                      const point_type_fp& current) {
+    return Neighbors(start, goal, current, max_path_length, vertices(search_key), this);
+  }
 
-   PathFindingSurface const& path_finding_surface;
-   boost::optional<size_t> tries;
- };
-
-struct GiveUp {};
+  PathFindingSurface const& path_finding_surface;
+  boost::optional<size_t> tries;
+};
 
 } //namespace path_finding
 
