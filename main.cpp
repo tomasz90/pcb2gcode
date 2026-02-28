@@ -277,6 +277,8 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     //--------------------------------------------------------------------------
     //load files, import layer files, create surface:
 
+    std::map<std::string, std::tuple<GerberImporter, std::shared_ptr<RoutingMill>, bool, bool>> prepared_layers;
+
     cout << "Importing front side... " << flush;
     if (vm.count("front") > 0) {
       string frontfile = vm["front"].as<string>();
@@ -284,7 +286,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
       if (!importer.load_file(frontfile)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("front", std::move(importer), isolator, false, ymirror);
+      prepared_layers.emplace("front", std::make_tuple(std::move(importer), isolator, false, ymirror));
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -297,7 +299,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
       if (!importer.load_file(backfile)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("back", std::move(importer), isolator, true, ymirror);
+      prepared_layers.emplace("back", std::make_tuple(std::move(importer), isolator, true, ymirror));
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
@@ -310,14 +312,14 @@ void do_pcb2gcode(int argc, const char* argv[]) {
       if (!importer.load_file(outline)) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
-      board->prepareLayer("outline", std::move(importer), cutter, !workSide(vm, "cut"), ymirror);
+      prepared_layers.emplace("outline", std::make_tuple(std::move(importer), cutter, !workSide(vm, "cut"), ymirror));
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";
     }
 
     cout << "Processing input files... " << flush;
-    board->createLayers();
+    board->createLayers(std::move(prepared_layers));
     cout << "DONE.\n";
 
     //---------------------------------------------------------------------------

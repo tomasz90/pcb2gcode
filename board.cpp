@@ -18,7 +18,9 @@
  * along with pcb2gcode.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #include "board.hpp"
+
 #include <memory>
 using std::shared_ptr;
 using std::make_shared;
@@ -69,16 +71,11 @@ double Board::get_height() {
   return layers.begin()->second.surface.get_height_in();
 }
 
-void Board::prepareLayer(string layername, GerberImporter importer, shared_ptr<RoutingMill> manufacturer, bool backside, bool ymirror) {
-  // see comment for prep_t in board.hpp
-  prepared_layers.insert(std::make_pair(layername, make_tuple(std::move(importer), manufacturer, backside, ymirror)));
-}
-
 /******************************************************************************/
 /*
  */
 /******************************************************************************/
-void Board::createLayers()
+void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::shared_ptr<RoutingMill>, bool, bool>>&& prepared_layers)
 {
     if (!prepared_layers.size())
       return; // Nothing to do.
