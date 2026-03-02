@@ -692,7 +692,7 @@ bool layers_equivalent(const gerbv_layer_t* const layer1, const gerbv_layer_t* c
 mp_pair paths_to_shapes(const coordinate_type_fp& diameter, const multi_linestring_type_fp& paths, bool fill_closed_lines) {
   multi_linestring_type_fp new_paths(paths);
   if (fill_closed_lines) {
-    if (merge_near_points(new_paths, diameter) > 0) {
+    if (merge_near_points(new_paths, 0.0001) > 0) {
       cerr << "Some nearly-connected lines in the gerber input have been adjusted to properly connect" << endl;
     }
   }
