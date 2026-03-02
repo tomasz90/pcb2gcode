@@ -13,7 +13,7 @@ size_t merge_near_points(std::map<point_type_fp, point_type_fp>& points, const c
   // Merge points that are near one another.  This doesn't do a
   // great job but it's fast enough.
   size_t points_merged = 0;
-  const auto distance_2 = distance * distance;
+  const auto distance_2 = bg::comparable_distance(point_type_fp(0,0), point_type_fp(0, distance));
   for (auto i = points.begin(); i != points.end(); i++) {
     for (auto j = i;
          j != points.upper_bound(point_type_fp(i->second.x()+distance,
