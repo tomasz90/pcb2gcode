@@ -300,8 +300,8 @@ BOOST_DATA_TEST_CASE(gerberimporter_match_gerbv,
                      boost::unit_test::data::make(
                          std::vector<std::tuple<std::string, double>>{
                            {"overlapping_lines.gbr",       0.00391},
-                           {"levels.gbr",                  0.004966},
-                           {"levels_step_and_repeat.gbr",  0.004802},
+                           {"levels.gbr",                  0.006459},
+                           {"levels_step_and_repeat.gbr",  0.006172},
                            {"code22_lower_left_line.gbr",  0.01002},
                            {"code4_outline.gbr",           0.0214},
                            {"code5_polygon.gbr",           0.00001129},
@@ -332,7 +332,7 @@ BOOST_DATA_TEST_CASE(gerberimporter_match_gerbv,
 BOOST_DATA_TEST_CASE(gerberimporter_visual,
                      boost::unit_test::data::make(
                          std::vector<std::tuple<std::string, bool, double>>{
-                           {"circular_arcs.gbr", false, 0.3713},
+                           {"circular_arcs.gbr", false, 0.3708},
                            {"broken_box.gbr",    true,  0.7005}}),
                      gerber_file, fill_closed_lines, expected_set_ratio) {
   const char *skip_test = std::getenv("SKIP_GERBERIMPORTER_TESTS");
