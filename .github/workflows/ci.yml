@@ -16,6 +16,16 @@ on:
         description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         required: false
         default: false
+      no_restore_cache:
+        type: boolean
+        description: 'Do not restore cache'
+        required: false
+        default: false
+      no_restore_ccache:
+        type: boolean
+        description: 'Do not restore ccache'
+        required: false
+        default: false
 
 jobs:
   build-and-test:
@@ -131,6 +141,7 @@ jobs:
 
     - name: Restore cache
       uses: actions/cache/restore@v5
+      if: ${{ inputs.no_restore_cache == false }}
       with:
         path: ${{ steps.sanitize-key.outputs.path }}
         key: ${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -142,6 +153,7 @@ jobs:
 ### Setup ccache
     - name: Restore ccache
       uses: actions/cache/restore@v5
+      if: ${{ inputs.no_restore_ccache == false }}
       with:
         path: ${{ steps.sanitize-key.outputs.ccache_path }}
         key: ccache-${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
