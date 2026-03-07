@@ -50,29 +50,26 @@ jobs:
       if: matrix.os == 'windows'
       uses: msys2/setup-msys2@v2
       with:
-        #TODO: Upgrade to UCRT64.
-        msystem: MINGW64
+        msystem: UCRT64
         update: true
-        install: >-
-          autoconf
-          automake
-          base-devel
-          bash
-          gettext-devel
+        pacboy: >-
+          base-devel:
+          bash:
+          gettext-devel:
           git
           libtool
-          mingw-w64-x86_64-boost
-          mingw-w64-x86_64-cairo
-          mingw-w64-x86_64-cmake
-          mingw-w64-x86_64-pkgconf
-          mingw-w64-x86_64-gcc
-          mingw-w64-x86_64-gtk2
-          mingw-w64-x86_64-gtkmm
-          mingw-w64-x86_64-ccache
-          mingw-w64-x86_64-gdk-pixbuf2
-          mingw-w64-x86_64-imagemagick
+          boost
+          cairo
+          cmake
+          pkgconf
+          gcc
+          gtk2
+          gtkmm
+          ccache
+          gdk-pixbuf2
+          imagemagick
           lcov
-          zip
+          zip:
     - name: Checkout pcb2gcode source
       uses: actions/checkout@v3
     - name: Setup paths and env
@@ -386,50 +383,50 @@ jobs:
           cp ${LOCAL_INSTALL_PATH}/bin/libgeos*.dll .
         fi
         if [[ ${GEOS} == 'latest' ]]; then
-          cp /mingw64/bin/libgeos*.dll .
+          cp /ucrt64/bin/libgeos*.dll .
         fi
-        cp /mingw64/bin/libLerc.dll .
-        cp /mingw64/bin/libboost_program_options-mt.dll .
-        cp /mingw64/bin/libbrotlicommon.dll .
-        cp /mingw64/bin/libbrotlidec.dll .
-        cp /mingw64/bin/libbz2-1.dll .
-        cp /mingw64/bin/libcairo-2.dll .
-        cp /mingw64/bin/libdatrie-1.dll .
-        cp /mingw64/bin/libdeflate.dll .
-        cp /mingw64/bin/libexpat-1.dll .
-        cp /mingw64/bin/libffi-8.dll .
-        cp /mingw64/bin/libfontconfig-1.dll .
-        cp /mingw64/bin/libfreetype-6.dll .
-        cp /mingw64/bin/libfribidi-0.dll .
-        cp /mingw64/bin/libgcc_s_seh-1.dll .
-        cp /mingw64/bin/libgdk-win32-2.0-0.dll .
-        cp /mingw64/bin/libgdk_pixbuf-2.0-0.dll .
-        cp /mingw64/bin/libgio-2.0-0.dll .
-        cp /mingw64/bin/libglib-2.0-0.dll .
-        cp /mingw64/bin/libgmodule-2.0-0.dll .
-        cp /mingw64/bin/libgobject-2.0-0.dll .
-        cp /mingw64/bin/libgraphite2.dll .
-        cp /mingw64/bin/libharfbuzz-0.dll .
-        cp /mingw64/bin/libiconv-2.dll .
-        cp /mingw64/bin/libintl-8.dll .
-        cp /mingw64/bin/libjbig-0.dll .
-        cp /mingw64/bin/libjpeg-8.dll .
-        cp /mingw64/bin/liblzma-5.dll .
-        cp /mingw64/bin/libpango-1.0-0.dll .
-        cp /mingw64/bin/libpangocairo-1.0-0.dll .
-        cp /mingw64/bin/libpangoft2-1.0-0.dll .
-        cp /mingw64/bin/libpangowin32-1.0-0.dll .
-        cp /mingw64/bin/libpcre2-8-0.dll .
-        cp /mingw64/bin/libpixman-1-0.dll .
-        cp /mingw64/bin/libpng16-16.dll .
-        cp /mingw64/bin/libsharpyuv-0.dll .
-        cp /mingw64/bin/libstdc++-6.dll .
-        cp /mingw64/bin/libthai-0.dll .
-        cp /mingw64/bin/libtiff-6.dll .
-        cp /mingw64/bin/libwebp-7.dll .
-        cp /mingw64/bin/libwinpthread-1.dll .
-        cp /mingw64/bin/libzstd.dll .
-        cp /mingw64/bin/zlib1.dll .
+        cp /ucrt64/bin/libLerc.dll .
+        cp /ucrt64/bin/libboost_program_options-mt.dll .
+        cp /ucrt64/bin/libbrotlicommon.dll .
+        cp /ucrt64/bin/libbrotlidec.dll .
+        cp /ucrt64/bin/libbz2-1.dll .
+        cp /ucrt64/bin/libcairo-2.dll .
+        cp /ucrt64/bin/libdatrie-1.dll .
+        cp /ucrt64/bin/libdeflate.dll .
+        cp /ucrt64/bin/libexpat-1.dll .
+        cp /ucrt64/bin/libffi-8.dll .
+        cp /ucrt64/bin/libfontconfig-1.dll .
+        cp /ucrt64/bin/libfreetype-6.dll .
+        cp /ucrt64/bin/libfribidi-0.dll .
+        cp /ucrt64/bin/libgcc_s_seh-1.dll .
+        cp /ucrt64/bin/libgdk-win32-2.0-0.dll .
+        cp /ucrt64/bin/libgdk_pixbuf-2.0-0.dll .
+        cp /ucrt64/bin/libgio-2.0-0.dll .
+        cp /ucrt64/bin/libglib-2.0-0.dll .
+        cp /ucrt64/bin/libgmodule-2.0-0.dll .
+        cp /ucrt64/bin/libgobject-2.0-0.dll .
+        cp /ucrt64/bin/libgraphite2.dll .
+        cp /ucrt64/bin/libharfbuzz-0.dll .
+        cp /ucrt64/bin/libiconv-2.dll .
+        cp /ucrt64/bin/libintl-8.dll .
+        cp /ucrt64/bin/libjbig-0.dll .
+        cp /ucrt64/bin/libjpeg-8.dll .
+        cp /ucrt64/bin/liblzma-5.dll .
+        cp /ucrt64/bin/libpango-1.0-0.dll .
+        cp /ucrt64/bin/libpangocairo-1.0-0.dll .
+        cp /ucrt64/bin/libpangoft2-1.0-0.dll .
+        cp /ucrt64/bin/libpangowin32-1.0-0.dll .
+        cp /ucrt64/bin/libpcre2-8-0.dll .
+        cp /ucrt64/bin/libpixman-1-0.dll .
+        cp /ucrt64/bin/libpng16-16.dll .
+        cp /ucrt64/bin/libsharpyuv-0.dll .
+        cp /ucrt64/bin/libstdc++-6.dll .
+        cp /ucrt64/bin/libthai-0.dll .
+        cp /ucrt64/bin/libtiff-6.dll .
+        cp /ucrt64/bin/libwebp-7.dll .
+        cp /ucrt64/bin/libwinpthread-1.dll .
+        cp /ucrt64/bin/libzstd.dll .
+        cp /ucrt64/bin/zlib1.dll .
         popd
         zip -r pcb2gcode-${{ steps.sanitize-key.outputs.key }}-${PCB2GCODE_VERSION}.zip pcb2gcode-${PCB2GCODE_VERSION}
       env:
