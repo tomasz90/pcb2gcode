@@ -112,6 +112,7 @@ set(HAVE_RSVG_HANDLE_RENDER_DOCUMENT 0)
 set(HAVE_RSVG_HANDLE_GET_INTRINSIC_SIZE_IN_PIXELS 0)
 
 if(BUILD_TESTING)
+  find_package(Boost 1.60 CONFIG REQUIRED COMPONENTS unit_test_framework)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   pkg_check_modules(GLIBMM REQUIRED IMPORTED_TARGET glibmm-2.4>=2.8)
   pkg_check_modules(GDKMM REQUIRED IMPORTED_TARGET gdkmm-2.4>=2.8)
@@ -235,7 +236,7 @@ if(BUILD_TESTING)
 
     get_target_property(target_sources "${target_name}" SOURCES)
     foreach(source IN LISTS target_sources)
-      if(source MATCHES "(/|^)([^/]+_tests\\.cpp|boost_unit_test\\.cpp)$")
+      if(source MATCHES "(/|^)([^/]+_tests\\.cpp)$")
         set_property(
           SOURCE "${source}"
           APPEND
@@ -249,6 +250,7 @@ if(BUILD_TESTING)
     add_executable("${target_name}" ${PCB2GCODE_TEST_SOURCES})
     pcb2gcode_disable_test_source_coverage("${target_name}")
     pcb2gcode_apply_common("${target_name}")
+    target_link_libraries("${target_name}" PRIVATE Boost::unit_test_framework)
     add_test(NAME "${target_name}" COMMAND "${target_name}")
     set_property(GLOBAL APPEND PROPERTY PCB2GCODE_TEST_TARGETS "${target_name}")
   endfunction()
@@ -257,13 +259,11 @@ if(BUILD_TESTING)
     voronoi_tests
     voronoi.cpp
     voronoi_tests.cpp
-    boost_unit_test.cpp
     consistent_rand.cpp)
 
   pcb2gcode_add_test_executable(
     eulerian_paths_tests
     eulerian_paths_tests.cpp
-    boost_unit_test.cpp
     bg_operators.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
@@ -277,7 +277,6 @@ if(BUILD_TESTING)
     segmentize_tests.cpp
     segmentize.cpp
     merge_near_points.cpp
-    boost_unit_test.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
     bg_operators.cpp
@@ -288,7 +287,6 @@ if(BUILD_TESTING)
     path_finding_tests
     path_finding_tests.cpp
     path_finding.cpp
-    boost_unit_test.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
     segmentize.cpp
@@ -300,18 +298,15 @@ if(BUILD_TESTING)
 
   pcb2gcode_add_test_executable(
     tsp_solver_tests
-    tsp_solver_tests.cpp
-    boost_unit_test.cpp)
+    tsp_solver_tests.cpp)
 
   pcb2gcode_add_test_executable(
     units_tests
-    units_tests.cpp
-    boost_unit_test.cpp)
+    units_tests.cpp)
 
   pcb2gcode_add_test_executable(
     available_drills_tests
-    available_drills_tests.cpp
-    boost_unit_test.cpp)
+    available_drills_tests.cpp)
 
   pcb2gcode_resolve_sources(
     PCB2GCODE_GERBERIMPORTER_TEST_SOURCES
@@ -320,7 +315,6 @@ if(BUILD_TESTING)
     merge_near_points.cpp
     eulerian_paths.cpp
     segmentize.cpp
-    boost_unit_test.cpp
     bg_helpers.cpp
     bg_operators.cpp
     geos_helpers.cpp
@@ -341,20 +335,18 @@ if(BUILD_TESTING)
     PRIVATE ${GLIBMM_CFLAGS_OTHER} ${GDKMM_CFLAGS_OTHER} ${RSVG_CFLAGS_OTHER})
   target_link_libraries(
     gerberimporter_tests
-    PRIVATE PkgConfig::GLIBMM PkgConfig::GDKMM PkgConfig::RSVG)
+    PRIVATE Boost::unit_test_framework PkgConfig::GLIBMM PkgConfig::GDKMM PkgConfig::RSVG)
 
   pcb2gcode_add_test_executable(
     options_tests
     options_tests.cpp
-    options.cpp
-    boost_unit_test.cpp)
+    options.cpp)
 
   pcb2gcode_add_test_executable(
     autoleveller_tests
     autoleveller_tests.cpp
     autoleveller.cpp
     options.cpp
-    boost_unit_test.cpp
     bg_operators.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
@@ -365,14 +357,12 @@ if(BUILD_TESTING)
   pcb2gcode_add_test_executable(
     common_tests
     common.cpp
-    common_tests.cpp
-    boost_unit_test.cpp)
+    common_tests.cpp)
 
   pcb2gcode_add_test_executable(
     backtrack_tests
     backtrack.cpp
     backtrack_tests.cpp
-    boost_unit_test.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
     segmentize.cpp
@@ -385,7 +375,6 @@ if(BUILD_TESTING)
     trim_paths_tests
     trim_paths.cpp
     trim_paths_tests.cpp
-    boost_unit_test.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
     segmentize.cpp
@@ -402,7 +391,6 @@ if(BUILD_TESTING)
     bg_helpers.cpp
     eulerian_paths.cpp
     segmentize.cpp
-    boost_unit_test.cpp
     merge_near_points.cpp
     geos_helpers.cpp
     options.cpp)
@@ -411,7 +399,6 @@ if(BUILD_TESTING)
     geos_helpers_tests
     geos_helpers_tests.cpp
     geos_helpers.cpp
-    boost_unit_test.cpp
     bg_operators.cpp
     bg_helpers.cpp
     eulerian_paths.cpp
@@ -421,14 +408,12 @@ if(BUILD_TESTING)
 
   pcb2gcode_add_test_executable(
     disjoint_set_tests
-    disjoint_set_tests.cpp
-    boost_unit_test.cpp)
+    disjoint_set_tests.cpp)
 
   pcb2gcode_add_test_executable(
     segment_tree_tests
     segment_tree_tests.cpp
-    segment_tree.cpp
-    boost_unit_test.cpp)
+    segment_tree.cpp)
 
   add_test(
     NAME integration_tests
