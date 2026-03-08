@@ -1,3 +1,39 @@
+categories:
+  - title: '✨ Features'
+    labels:
+      - 'feat'
+      - 'feature'
+      - 'enhancement'
+  - title: '🚀 Performance'
+    labels:
+      - 'perf'
+      - 'performance'
+  - title: '🪲 Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+  - title: '🔨 Build'
+    labels:
+      - 'build'
+  - title: '📘 Documentation'
+    labels:
+      - 'docs'
+      - 'documentation'
+      - 'doc'
+  - title: '✅ Tests'
+    labels:
+      - 'tests'
+      - 'test'
+      - 'testing'
+  - title: '♻️ Refactoring'
+    labels:
+      - 'refactoring'
+      - 'refactor'
+  - title: '🎨 Style'
+    labels:
+      - 'style'
+      - 'whitespace'
 template: |
   ## What’s Changed
 
