@@ -291,9 +291,9 @@ linestring_type_fp GerberImporter::circular_arc(const point_type_fp& start, cons
   const double stop_angle = start_angle + delta_angle;
   const coordinate_type_fp start_radius = bg::distance(start, center);
   const coordinate_type_fp stop_radius = bg::distance(stop, center);
-  auto const average_radius = (start_radius + stop_radius) / 2;
-  auto const radius_points = std::max(32. / 2 / bg::math::pi<double>(), average_radius / max_arc_segment_length);
-  const unsigned int steps = std::ceil(std::abs(delta_angle) * radius_points) + 1; // One more for the end point.
+  auto const max_radius = std::max(start_radius, stop_radius);
+  auto const max_angle = 2. * acos(1 - std::min(max_arc_segment_length / max_radius, 1.)); // sagitta <= tolerance
+  const unsigned int steps = std::max(std::ceil(std::abs(delta_angle) / max_angle), 1.) + 1; // generate at least start & stop
   linestring_type_fp linestring;
   linestring.reserve(steps);
   // First place the start;
