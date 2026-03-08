@@ -164,6 +164,20 @@ const string& gerber_directory() {
   return configured_dir;
 }
 
+bool write_pngs_enabled() {
+  static const bool enabled = []() {
+    const auto& mts = boost::unit_test::framework::master_test_suite();
+    for (int i = 1; i < mts.argc; i++) {
+      const string arg(mts.argv[i]);
+      if (arg == "--write-pngs") {
+        return true;
+      }
+    }
+    return false;
+  }();
+  return enabled;
+}
+
 map<uint32_t, size_t> get_counts(const Cairo::RefPtr<Cairo::ImageSurface>& cairo_surface) {
   size_t background = 0, both = 0, unknown = 0;
   // We only care about a few colors: background, match, red, blue, and all the rest.
@@ -199,8 +213,7 @@ map<uint32_t, size_t> get_counts(const Cairo::RefPtr<Cairo::ImageSurface>& cairo
 }
 
 void write_to_png(Cairo::RefPtr<Cairo::ImageSurface> cairo_surface, const string& gerber_file) {
-  const char *skip_png = std::getenv("SKIP_GERBERIMPORTER_TESTS_PNG");
-  if (skip_png != nullptr) {
+  if (!write_pngs_enabled()) {
     return;
   }
   cairo_surface->write_to_png(str(boost::format("%s.png") % gerber_file).c_str());
