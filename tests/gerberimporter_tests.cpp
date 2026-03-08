@@ -321,11 +321,6 @@ BOOST_DATA_TEST_CASE(gerberimporter_match_gerbv,
                            {"cutins.gbr",                  0},
                            {"NanoV3.3-B_Cu.gbr",           0.05798}}),
                      gerber_file, expected_error_rate) {
-  const char *skip_test = std::getenv("SKIP_GERBERIMPORTER_TESTS");
-  if (skip_test != nullptr) {
-    std::cout << "Skipping because SKIP_GERBERIMPORTER_TESTS is set in environment." << std::endl;
-    return;
-  }
   test_one(gerber_file, expected_error_rate);
 }
 
@@ -335,11 +330,6 @@ BOOST_DATA_TEST_CASE(gerberimporter_visual,
                            {"circular_arcs.gbr", false, 0.3708},
                            {"broken_box.gbr",    true,  0.7005}}),
                      gerber_file, fill_closed_lines, expected_set_ratio) {
-  const char *skip_test = std::getenv("SKIP_GERBERIMPORTER_TESTS");
-  if (skip_test != nullptr) {
-    std::cout << "Skipping because SKIP_GERBERIMPORTER_TESTS is set in environment." << std::endl;
-    return;
-  }
   test_visual(gerber_file, fill_closed_lines, expected_set_ratio);
 }
 
