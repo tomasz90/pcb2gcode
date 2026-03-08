@@ -498,20 +498,20 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         parallel-finished: true
-  release: # TODO: Use something more modern, like https://github.com/release-drafter/release-drafter
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+  release:
     needs: [build-and-test]
-    name: release
+    name: Draft Release
     runs-on: ubuntu-latest
+    permissions:
+      # write permission is required to create a github release
+      contents: write
+      # write permission is required for autolabeler
+      # otherwise, read permission is required at least
+      pull-requests: write
     steps:
       - name: Download the artifacts to release
         uses: actions/download-artifact@v4
       - run: echo "PCB2GCODE_VERSION=$(cat version/version.txt)" >> $GITHUB_ENV
-      - uses: "marvinpinto/action-automatic-releases@latest"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: ${{ startsWith(github.ref, 'refs/heads') && 'latest' || null }}
-          prerelease: ${{ startsWith(github.ref, 'refs/heads') }}
-          title: ${{ startsWith(github.ref, 'refs/heads') && 'Development Build' || null }}
-          files: |
-            pcb2gcode-*-${{ env.PCB2GCODE_VERSION }}/pcb2gcode-*-${{ env.PCB2GCODE_VERSION }}.*
+      - uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
