@@ -183,7 +183,7 @@ jobs:
           done
           tar xjf "boost_${BOOST}.tar.bz2"
           pushd boost_${BOOST}
-          ./bootstrap.sh --with-libraries=program_options,unit_test_framework --prefix=${LOCAL_INSTALL_PATH}
+          ./bootstrap.sh --with-libraries=program_options,test --prefix=${LOCAL_INSTALL_PATH}
           ./b2 -j ${NUM_CPUS}
           ./b2 install
           popd
