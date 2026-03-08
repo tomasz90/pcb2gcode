@@ -1,40 +1,65 @@
 categories:
   - title: '✨ Features'
     labels:
-      - 'feat'
       - 'feature'
-      - 'enhancement'
   - title: '🚀 Performance'
     labels:
-      - 'perf'
       - 'performance'
   - title: '🪲 Bug Fixes'
     labels:
-      - 'fix'
-      - 'bugfix'
       - 'bug'
   - title: '🔨 Build'
     labels:
       - 'build'
   - title: '📘 Documentation'
     labels:
-      - 'docs'
       - 'documentation'
-      - 'doc'
-  - title: '✅ Tests'
+  - title: '✅ Testing'
     labels:
-      - 'tests'
-      - 'test'
       - 'testing'
   - title: '♻️ Refactoring'
     labels:
       - 'refactoring'
-      - 'refactor'
   - title: '🎨 Style'
     labels:
       - 'style'
-      - 'whitespace'
 template: |
   ## What’s Changed
 
   $CHANGES
+autolabeler:
+  - label: 'feature'
+    title:
+      - '/feat:/i'
+      - '/feature:/i'
+      - '/enhancement:/i'
+  - label: 'performance'
+    title:
+      - '/perf:/i'
+      - '/performance:/i'
+  - label: 'bug'
+    title:
+      - '/fix:/i'
+      - '/bugfix:/i'
+      - '/bug:/i'
+  - label: 'build'
+    title:
+      - '/build:/i'
+  - label: 'documentation'
+    title:
+      - '/docs:/i'
+      - '/documentation:/i'
+      - '/doc:/i'
+  - label: 'testing'
+    title:
+      - '/tests:/i'
+      - '/test:/i'
+      - '/testing:/i'
+  - label: 'refactoring'
+    title:
+      - '/refactoring:/i'
+      - '/refactor:/i'
+  - label: 'style'
+    title:
+      - '/style:/i'
+      - '/whitespace:/i'
