@@ -17,6 +17,7 @@ categories:
   - title: '✅ Testing'
     labels:
       - 'testing'
+      - 'ci'
   - title: '♻️ Refactoring'
     labels:
       - 'refactoring'
@@ -55,6 +56,9 @@ autolabeler:
       - '/tests:/i'
       - '/test:/i'
       - '/testing:/i'
+  - label: 'ci'
+    title:
+      - '/ci:/i'
   - label: 'refactoring'
     title:
       - '/refactoring:/i'
