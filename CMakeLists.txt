@@ -180,8 +180,6 @@ set(PCB2GCODE_MAIN_SOURCES
     trim_paths.cpp
     voronoi.cpp)
 
-pcb2gcode_resolve_sources(PCB2GCODE_MAIN_SOURCES_RESOLVED ${PCB2GCODE_MAIN_SOURCES})
-add_executable(pcb2gcode ${PCB2GCODE_MAIN_SOURCES_RESOLVED})
 if(PCB2GCODE_HAS_GEOS)
   separate_arguments(PCB2GCODE_GEOS_CFLAGS_LIST NATIVE_COMMAND "${PCB2GCODE_GEOS_CFLAGS}")
   separate_arguments(PCB2GCODE_GEOS_LDFLAGS_LIST NATIVE_COMMAND "${PCB2GCODE_GEOS_LDFLAGS}")
@@ -222,6 +220,16 @@ function(pcb2gcode_apply_common target_name)
   endif()
 endfunction()
 
+# Shared object library so pcb2gcode and tests use the same compiled objects
+set(PCB2GCODE_CORE_SOURCES ${PCB2GCODE_MAIN_SOURCES})
+list(FILTER PCB2GCODE_CORE_SOURCES EXCLUDE REGEX "main\\.cpp$")
+pcb2gcode_resolve_sources(PCB2GCODE_CORE_SOURCES_RESOLVED ${PCB2GCODE_CORE_SOURCES})
+add_library(pcb2gcode_objects OBJECT ${PCB2GCODE_CORE_SOURCES_RESOLVED})
+pcb2gcode_apply_common(pcb2gcode_objects)
+
+pcb2gcode_resolve_sources(PCB2GCODE_MAIN_SOURCES_RESOLVED main.cpp)
+add_executable(pcb2gcode ${PCB2GCODE_MAIN_SOURCES_RESOLVED})
+target_link_libraries(pcb2gcode PRIVATE pcb2gcode_objects)
 pcb2gcode_apply_common(pcb2gcode)
 
 pcb2gcode_resolve_sources(PCB2GCODE_WKT_TO_SVG_SOURCES wkt_to_svg.cpp)
@@ -248,6 +256,7 @@ if(BUILD_TESTING)
   function(pcb2gcode_add_test_executable target_name)
     pcb2gcode_resolve_sources(PCB2GCODE_TEST_SOURCES ${ARGN})
     add_executable("${target_name}" ${PCB2GCODE_TEST_SOURCES})
+    target_link_libraries("${target_name}" PRIVATE pcb2gcode_objects)
     pcb2gcode_disable_test_source_coverage("${target_name}")
     pcb2gcode_apply_common("${target_name}")
     target_link_libraries("${target_name}" PRIVATE Boost::unit_test_framework)
@@ -257,44 +266,19 @@ if(BUILD_TESTING)
 
   pcb2gcode_add_test_executable(
     voronoi_tests
-    voronoi.cpp
-    voronoi_tests.cpp
-    consistent_rand.cpp)
+    voronoi_tests.cpp)
 
   pcb2gcode_add_test_executable(
     eulerian_paths_tests
-    eulerian_paths_tests.cpp
-    bg_operators.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    geos_helpers.cpp
-    options.cpp)
+    eulerian_paths_tests.cpp)
 
   pcb2gcode_add_test_executable(
     segmentize_tests
-    segmentize_tests.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    bg_operators.cpp
-    geos_helpers.cpp
-    options.cpp)
+    segmentize_tests.cpp)
 
   pcb2gcode_add_test_executable(
     path_finding_tests
-    path_finding_tests.cpp
-    path_finding.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    bg_operators.cpp
-    geos_helpers.cpp
-    options.cpp
-    segment_tree.cpp)
+    path_finding_tests.cpp)
 
   pcb2gcode_add_test_executable(
     tsp_solver_tests
@@ -310,16 +294,9 @@ if(BUILD_TESTING)
 
   pcb2gcode_resolve_sources(
     PCB2GCODE_GERBERIMPORTER_TEST_SOURCES
-    gerberimporter.cpp
-    gerberimporter_tests.cpp
-    merge_near_points.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    bg_helpers.cpp
-    bg_operators.cpp
-    geos_helpers.cpp
-    options.cpp)
+    gerberimporter_tests.cpp)
   add_executable(gerberimporter_tests ${PCB2GCODE_GERBERIMPORTER_TEST_SOURCES})
+  target_link_libraries(gerberimporter_tests PRIVATE pcb2gcode_objects)
   pcb2gcode_disable_test_source_coverage(gerberimporter_tests)
   pcb2gcode_apply_common(gerberimporter_tests)
   add_test(
@@ -339,72 +316,31 @@ if(BUILD_TESTING)
 
   pcb2gcode_add_test_executable(
     options_tests
-    options_tests.cpp
-    options.cpp)
+    options_tests.cpp)
 
   pcb2gcode_add_test_executable(
     autoleveller_tests
-    autoleveller_tests.cpp
-    autoleveller.cpp
-    options.cpp
-    bg_operators.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    geos_helpers.cpp)
+    autoleveller_tests.cpp)
 
   pcb2gcode_add_test_executable(
     common_tests
-    common.cpp
     common_tests.cpp)
 
   pcb2gcode_add_test_executable(
     backtrack_tests
-    backtrack.cpp
-    backtrack_tests.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    bg_operators.cpp
-    geos_helpers.cpp
-    options.cpp)
+    backtrack_tests.cpp)
 
   pcb2gcode_add_test_executable(
     trim_paths_tests
-    trim_paths.cpp
-    trim_paths_tests.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    bg_operators.cpp
-    geos_helpers.cpp
-    options.cpp)
+    trim_paths_tests.cpp)
 
   pcb2gcode_add_test_executable(
     outline_bridges_tests
-    outline_bridges_tests.cpp
-    outline_bridges.cpp
-    bg_operators.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    geos_helpers.cpp
-    options.cpp)
+    outline_bridges_tests.cpp)
 
   pcb2gcode_add_test_executable(
     geos_helpers_tests
-    geos_helpers_tests.cpp
-    geos_helpers.cpp
-    bg_operators.cpp
-    bg_helpers.cpp
-    eulerian_paths.cpp
-    segmentize.cpp
-    merge_near_points.cpp
-    options.cpp)
+    geos_helpers_tests.cpp)
 
   pcb2gcode_add_test_executable(
     disjoint_set_tests
@@ -412,8 +348,7 @@ if(BUILD_TESTING)
 
   pcb2gcode_add_test_executable(
     segment_tree_tests
-    segment_tree_tests.cpp
-    segment_tree.cpp)
+    segment_tree_tests.cpp)
 
   # Integration tests require Boost 1.83 and GEOS 3.13.1 for reproducible results.
   set(PCB2GCODE_RUN_INTEGRATION_TESTS OFF)
