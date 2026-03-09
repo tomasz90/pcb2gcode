@@ -82,6 +82,12 @@ jobs:
           zip:
     - name: Checkout pcb2gcode source
       uses: actions/checkout@v3
+    - name: Check for ci workflow changes
+      id: ci-changed
+      uses: dorny/paths-filter@v3
+      with:
+        filters: |
+          ci: '.github/workflows/ci.yml'
     - name: Setup paths and env
       run: |
         mkdir -p ${{ matrix.local_install_path }}/bin
@@ -141,7 +147,7 @@ jobs:
 
     - name: Restore cache
       uses: actions/cache/restore@v5
-      if: ${{ inputs.no_restore_cache == false }}
+      if: ${{ inputs.no_restore_cache != true && steps.ci-changed.outputs.ci != 'true' }}
       with:
         path: ${{ steps.sanitize-key.outputs.path }}
         key: ${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -153,7 +159,7 @@ jobs:
 ### Setup ccache
     - name: Restore ccache
       uses: actions/cache/restore@v5
-      if: ${{ inputs.no_restore_ccache == false }}
+      if: ${{ inputs.no_restore_ccache != true && steps.ci-changed.outputs.ci != 'true' }}
       with:
         path: ${{ steps.sanitize-key.outputs.ccache_path }}
         key: ccache-${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
