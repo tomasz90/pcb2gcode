@@ -514,6 +514,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Download the artifacts to release
+        id: download-artifacts
         uses: actions/download-artifact@v4
       - run: echo "PCB2GCODE_VERSION=$(cat version/version.txt)" >> $GITHUB_ENV
       - uses: release-drafter/release-drafter@v6
@@ -540,6 +541,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.draft-tag.outputs.tag }}
-          files: pcb2gcode-*/pcb2gcode-*
+          files: ${{ steps.download-artifacts.outputs.download-path }}/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
