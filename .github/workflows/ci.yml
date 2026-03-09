@@ -14,6 +14,11 @@ on:
         description: 'Run the build with tmate debugging enabled (https://github.com/marketplace/actions/debugging-with-tmate)'
         required: false
         default: false
+      examples_enabled:
+        type: boolean
+        description: 'Run the examples'
+        required: false
+        default: false
       no_restore_cache:
         type: boolean
         description: 'Do not restore cache'
@@ -318,9 +323,9 @@ jobs:
         PCB2GCODE_VERSION=$(./build/pcb2gcode --version | head -1)-g${GIT_COMMIT}
         echo "PCB2GCODE_VERSION=$PCB2GCODE_VERSION" >> $GITHUB_ENV
 
-### Run examples
+### Run examples.  Don't run them if code_coverage is set because they are too slow.  Only on ubuntu because it has valgrind.
     - name: Run examples with valgrind
-      if: github.event_name == 'schedule' && ((matrix.code_coverage == '') && matrix.os == 'ubuntu')
+      if: (github.event_name == 'schedule' || inputs.examples_enabled == true) && matrix.code_coverage == '' && matrix.os == 'ubuntu'
       run: |
         pushd tests/data/gerbv_example
         ls | parallel -k -j ${NUM_CPUS} --halt soon,fail=1 '
@@ -330,24 +335,14 @@ jobs:
               cat no-valgrind;
             fi;
             if [[ -f "no-valgrind" || "${{ matrix.os }}" != "ubuntu" ]]; then
-              time ../../../build/pcb2gcode || exit;
+              time ../../../../build/pcb2gcode || exit;
             else
-              time valgrind --error-exitcode=127 --errors-for-leak-kinds=definite --leak-check=full -s --exit-on-first-error=yes --expensive-definedness-checks=yes -- ../../../build/pcb2gcode || exit;
+              time valgrind --error-exitcode=127 --errors-for-leak-kinds=definite --leak-check=full -s --exit-on-first-error=yes --expensive-definedness-checks=yes -- ../../../../build/pcb2gcode || exit;
             fi;
             popd;
             echo "::endgroup::";
           } 2>&1'
         popd
-    - name: Run examples without valgrind
-      if: github.event_name == 'schedule' && !((matrix.code_coverage == '') && matrix.os == 'ubuntu')
-      run: |
-        for d in tests/data/gerbv_example/*; do
-            if [ -d "$d" ]; then
-                pushd "$d"
-                time ../../../build/pcb2gcode || exit $?
-                popd
-            fi
-        done
     - name: >
         Run unit tests
         ${{ matrix.code_coverage == '' && matrix.os == 'ubuntu' && 'with valgrind' || 'without valgrind' }}
