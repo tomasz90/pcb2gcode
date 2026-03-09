@@ -415,11 +415,26 @@ if(BUILD_TESTING)
     segment_tree_tests.cpp
     segment_tree.cpp)
 
-  add_test(
-    NAME integration_tests
-    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/integration/integration_tests.py"
-            --pcb2gcode-binary "$<TARGET_FILE:pcb2gcode>"
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  # Integration tests require Boost 1.83 and GEOS 3.13.1 for reproducible results.
+  set(PCB2GCODE_RUN_INTEGRATION_TESTS OFF)
+  if(PCB2GCODE_HAS_GEOS
+     AND PCB2GCODE_GEOS_VERSION VERSION_EQUAL "3.13.1"
+     AND Boost_VERSION VERSION_EQUAL "1.83")
+    set(PCB2GCODE_RUN_INTEGRATION_TESTS ON)
+  endif()
+  if(PCB2GCODE_RUN_INTEGRATION_TESTS)
+    add_test(
+      NAME integration_tests
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/integration/integration_tests.py"
+              --pcb2gcode-binary "$<TARGET_FILE:pcb2gcode>"
+      WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+  else()
+    set(_geos_display "${PCB2GCODE_GEOS_VERSION}")
+    if(NOT _geos_display)
+      set(_geos_display "none")
+    endif()
+    message(STATUS "Skipping integration_tests (require Boost 1.83 and GEOS 3.13.1, have Boost ${Boost_VERSION} and GEOS ${_geos_display})")
+  endif()
 
   if(PCB2GCODE_ENABLE_CODE_COVERAGE)
     get_property(PCB2GCODE_TEST_TARGETS GLOBAL PROPERTY PCB2GCODE_TEST_TARGETS)
