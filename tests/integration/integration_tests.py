@@ -20,7 +20,6 @@ try:
   colour_runner_available = True
 except:
   colour_runner_available = False
-import in_place
 import termcolor
 import unittest
 
@@ -208,17 +207,22 @@ class IntegrationTests(unittest.TestCase):
       return 'width="{:.12g}" height="{:.12g}" '.format(width, height)
     for root, _, files in os.walk(path):
       for current_file in files:
-        with in_place.InPlace(os.path.join(root, current_file)) as svg_file:
-          for line in svg_file:
-            if line.startswith("<svg"):
-              svg_file.write("<!-- original:\n" +
+        filepath = os.path.join(root, current_file)
+        with open(filepath, 'r', encoding='utf-8') as f:
+          lines = f.readlines()
+        new_lines = []
+        for line in lines:
+          if line.startswith("<svg"):
+            new_lines.append("<!-- original:\n" +
                              line +
                              "-->\n" +
                              re.sub('width="(?P<width>[^"]*)" height="(?P<height>[^"]*)" ',
                                     bigger,
                                     line))
-            else:
-              svg_file.write(line)
+          else:
+            new_lines.append(line)
+        with open(filepath, 'w', encoding='utf-8') as f:
+          f.writelines(new_lines)
 
   def pcb2gcode_one_directory(self, input_path, pcb2gcode_binary, args, exit_code):
     """Run pcb2gcode once in one directory.
