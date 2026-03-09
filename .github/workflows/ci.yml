@@ -5,8 +5,6 @@ on:
   push:
     branches:
       - master
-    tags:
-      - "v*"
   schedule:
     - cron: '5 4 * * 1'
   workflow_dispatch:
@@ -159,7 +157,7 @@ jobs:
 ### Setup ccache
     - name: Restore ccache
       uses: actions/cache/restore@v5
-      if: ${{ inputs.no_restore_ccache != true && steps.ci-changed.outputs.ci != 'true' }}
+      if: ${{ inputs.no_restore_ccache != true }}
       with:
         path: ${{ steps.sanitize-key.outputs.ccache_path }}
         key: ccache-${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
@@ -503,3 +501,41 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         parallel-finished: true
+  release:
+    if: github.event_name == 'push'
+    needs: [build-and-test]
+    name: Draft Release
+    runs-on: ubuntu-latest
+    permissions:
+      # write permission is required to create a github release
+      contents: write
+      # write permission is required for autolabeler
+      # otherwise, read permission is required at least
+      pull-requests: write
+    steps:
+      - name: Download the artifacts to release
+        uses: actions/download-artifact@v4
+      - run: echo "PCB2GCODE_VERSION=$(cat version/version.txt)" >> $GITHUB_ENV
+      - uses: release-drafter/release-drafter@v6
+        # (Optional) specify config name to use, relative to .github/. Default: release-drafter.yml
+        # with:
+        #   config-name: my-config.yml
+        #   disable-autolabeler: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Get draft release tag
+        id: draft-tag
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            TAG=$(gh release list --limit 20 --json tagName,isDraft -q '[.[] | select(.isDraft)][0].tagName')
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          fi
+      - name: Upload artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.draft-tag.outputs.tag }}
+          files: pcb2gcode-*/pcb2gcode-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
