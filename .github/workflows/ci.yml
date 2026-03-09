@@ -24,6 +24,11 @@ on:
         description: 'Do not restore ccache'
         required: false
         default: false
+      allow_ci_cache_despite_ci_changes:
+        type: boolean
+        description: 'Restore cache even when .github/workflows/ci.yml has changed (e.g. to speed up CI while iterating on workflow)'
+        required: false
+        default: false
 
 jobs:
   build-and-test:
@@ -86,6 +91,15 @@ jobs:
       with:
         filters: |
           ci: '.github/workflows/ci.yml'
+    - name: Check for allow CI cache label
+      id: allow-ci-cache-label
+      run: |
+        allowed=false
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          labels="|${{ join(github.event.pull_request.labels.*.name, '|') }}|"
+          if [[ "$labels" == *"|use-ci-cache|"* ]]; then allowed=true; fi
+        fi
+        echo "allowed=$allowed" >> $GITHUB_OUTPUT
     - name: Setup paths and env
       run: |
         mkdir -p ${{ matrix.local_install_path }}/bin
@@ -145,8 +159,7 @@ jobs:
 
     - name: Restore cache
       uses: actions/cache/restore@v5
-      # TODO: Add: && steps.ci-changed.outputs.ci != 'true' }}
-      if: ${{ inputs.no_restore_cache != true }}
+      if: ${{ inputs.no_restore_cache != true && (steps.ci-changed.outputs.ci != 'true' || steps.allow-ci-cache-label.outputs.allowed == 'true' || inputs.allow_ci_cache_despite_ci_changes == true) }}
       with:
         path: ${{ steps.sanitize-key.outputs.path }}
         key: ${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
