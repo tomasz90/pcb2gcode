@@ -422,7 +422,22 @@ if(BUILD_TESTING)
      AND Boost_VERSION VERSION_EQUAL "1.83")
     set(PCB2GCODE_RUN_INTEGRATION_TESTS ON)
   endif()
+
   if(PCB2GCODE_RUN_INTEGRATION_TESTS)
+    # Require integration_tests.py Python modules (e.g. termcolor); CMake fails if any are missing.
+    set(PCB2GCODE_INTEGRATION_TEST_DEPS "argparse;collections;difflib;filecmp;multiprocessing;os;re;shutil;subprocess;sys;tempfile;xml.etree.ElementTree;termcolor;unittest")
+    foreach(_mod IN LISTS PCB2GCODE_INTEGRATION_TEST_DEPS)
+      execute_process(
+        COMMAND "${Python3_EXECUTABLE}" -c "import ${_mod}"
+        RESULT_VARIABLE _import_result
+        OUTPUT_QUIET
+        ERROR_QUIET
+      )
+      if(NOT _import_result EQUAL 0)
+        message(FATAL_ERROR "integration_tests require Python module '${_mod}', which is not available. Install it (e.g. pip install ${_mod}).")
+      endif()
+    endforeach()
+
     add_test(
       NAME integration_tests
       COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/integration/integration_tests.py"
