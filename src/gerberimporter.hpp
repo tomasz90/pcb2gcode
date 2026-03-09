@@ -21,7 +21,6 @@
 #define GERBERIMPORTER_H
 
 #include <string>
-#include <iostream>
 #include <utility>
 #include <map>
 #include <gerbv.h>
