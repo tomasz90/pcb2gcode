@@ -145,8 +145,7 @@ jobs:
 
     - name: Restore cache
       uses: actions/cache/restore@v5
-       # TODO: Add: && steps.ci-changed.outputs.ci != 'true' }} below
-      if: ${{ inputs.no_restore_cache != true }}
+      if: ${{ inputs.no_restore_cache != true && steps.ci-changed.outputs.ci != 'true' }}
       with:
         path: ${{ steps.sanitize-key.outputs.path }}
         key: ${{ steps.sanitize-key.outputs.key }}-${{ github.run_id }}-${{ github.run_attempt }}
