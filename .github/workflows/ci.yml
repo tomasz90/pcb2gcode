@@ -203,6 +203,7 @@ jobs:
           pushd ~
           git clone --depth 1 --branch ${{ matrix.geos }} https://github.com/libgeos/geos.git
           pushd geos
+          echo "GEOS commit: $(git rev-parse HEAD)"
           mkdir build
           pushd build
           cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_INSTALL_PREFIX=${LOCAL_INSTALL_PATH} 
@@ -221,6 +222,7 @@ jobs:
         pushd ~
         git clone --branch=v2.4 --depth=1 https://github.com/linux-test-project/lcov.git
         pushd lcov
+        echo "LCOV commit: $(git rev-parse HEAD)"
         make PREFIX=${LOCAL_INSTALL_PATH} install
         hash -r
         lcov --version
@@ -239,6 +241,7 @@ jobs:
           pushd ~
           git clone --depth=1 --branch=iwyu https://github.com/eyal0/gerbv.git
           pushd gerbv
+          echo "GERBV commit: $(git rev-parse HEAD)"
           mkdir build
           pushd build
           cmake -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release .. -DCMAKE_INSTALL_PREFIX=${LOCAL_INSTALL_PATH}
@@ -260,6 +263,7 @@ jobs:
           echo "UPDATE_CACHE=true" >> $GITHUB_ENV
           pushd ~
           git clone --depth=1 --branch=master git://sourceware.org/git/valgrind.git
+          echo "VALGRIND commit: $(git rev-parse HEAD)"
           pushd valgrind
           sh autogen.sh
           ./configure --prefix=${LOCAL_INSTALL_PATH}
