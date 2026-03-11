@@ -130,7 +130,7 @@ jobs:
       if: matrix.os == 'ubuntu'
       run: |
         sudo apt-get update
-        sudo apt-get install libgtkmm-2.4-dev moreutils autopoint libc6-dbg librsvg2-dev parallel ccache g++
+        sudo apt-get install libgtkmm-2.4-dev moreutils autopoint libc6-dbg librsvg2-dev ccache g++
         sudo apt-get install libperlio-gzip-perl libjson-perl libcapture-tiny-perl libjson-xs-perl libdatetime-perl python3-setuptools
         pip3 install --user wheel colour_runner unittest2 termcolor concurrencytest
 
@@ -277,7 +277,7 @@ jobs:
     - name: Install valgrind
       if: matrix.os == 'ubuntu'
       run: |
-        if ! valgrind --version || ! grep -qx "$(git ls-remote git://sourceware.org/git/valgrind.git master)" ${LOCAL_INSTALL_PATH}/bin/valgrind.version; then
+        if ! valgrind --version; then
           git ls-remote git://sourceware.org/git/valgrind.git master > ${LOCAL_INSTALL_PATH}/bin/valgrind.version
           echo "UPDATE_CACHE=true" >> $GITHUB_ENV
           pushd ~
@@ -324,25 +324,20 @@ jobs:
         echo "PCB2GCODE_VERSION=$PCB2GCODE_VERSION" >> $GITHUB_ENV
 
 ### Run examples.  Don't run them if code_coverage is set because they are too slow.  Only on ubuntu because it has valgrind.
-    - name: Run examples with valgrind
-      if: (github.event_name == 'schedule' || inputs.examples_enabled == true) && matrix.code_coverage == '' && matrix.os == 'ubuntu'
+    - name: Run examples
+      if: (github.event_name == 'schedule' || inputs.examples_enabled == true)
       run: |
-        pushd tests/data/gerbv_example
-        ls | parallel -k -j ${NUM_CPUS} --halt soon,fail=1 '
-          { echo "::group::Running on {}";
-            pushd {};
-            if [[ -f "no-valgrind" ]]; then
-              cat no-valgrind;
-            fi;
-            if [[ -f "no-valgrind" || "${{ matrix.os }}" != "ubuntu" ]]; then
-              time ../../../../build/pcb2gcode || exit;
-            else
-              time valgrind --error-exitcode=127 --errors-for-leak-kinds=definite --leak-check=full -s --exit-on-first-error=yes --expensive-definedness-checks=yes -- ../../../../build/pcb2gcode || exit;
-            fi;
-            popd;
-            echo "::endgroup::";
-          } 2>&1'
-        popd
+        if [[ -n "${{ matrix.code_coverage }}" ]]; then
+          code_coverage_arg="--code-coverage";
+        else
+          code_coverage_arg="";
+        fi
+        if [[ -f ./build/pcb2gcode.exe ]]; then
+          pcb2gcode_binary="./build/pcb2gcode.exe";
+        else
+          pcb2gcode_binary="./build/pcb2gcode";
+        fi
+        ls -d tests/data/gerbv_example/* | ./tools/parallel.py -j ${NUM_CPUS} --halt now -- python ./tests/integration/run_example.py '{}' --pcb2gcode-binary $pcb2gcode_binary $code_coverage_arg
     - name: >
         Run unit tests
         ${{ matrix.code_coverage == '' && matrix.os == 'ubuntu' && 'with valgrind' || 'without valgrind' }}
