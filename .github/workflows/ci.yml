@@ -337,7 +337,7 @@ jobs:
         else
           pcb2gcode_binary="./build/pcb2gcode";
         fi
-        ls -d tests/data/gerbv_example/* | ./tools/parallel.py -j ${NUM_CPUS} --halt now -- python ./tests/integration/run_example.py '{}' --pcb2gcode-binary $pcb2gcode_binary $code_coverage_arg
+        ls -d tests/data/gerbv_example/* | ./tools/parallel.py -j ${NUM_CPUS} --halt now -- python ./tools/run_example.py '{}' --pcb2gcode-binary $pcb2gcode_binary $code_coverage_arg
     - name: >
         Run unit tests
         ${{ matrix.code_coverage == '' && matrix.os == 'ubuntu' && 'with valgrind' || 'without valgrind' }}

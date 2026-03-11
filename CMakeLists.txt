@@ -440,7 +440,7 @@ if(BUILD_TESTING)
 
     add_test(
       NAME integration_tests
-      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tests/integration/integration_tests.py"
+      COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/integration_tests.py"
               --pcb2gcode-binary "$<TARGET_FILE:pcb2gcode>"
       WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
   else()

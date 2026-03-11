@@ -378,7 +378,7 @@ if __name__ == '__main__':
       self.do_test_one(t, pcb2gcode_binary, extra_args)
     setattr(IntegrationTests, 'test_' + t.name, test_method)
     test_method.__name__ = 'test_' + t.name
-    test_method.__doc__ = str(test_case)
+    test_method.__doc__ = str(t)
   for test_case in TEST_CASES:
     if args.quick and not test_case.quick:
       continue
@@ -425,8 +425,8 @@ if __name__ == '__main__':
       test_result = unittest.TextTestRunner(verbosity=2).run(suite)
     if not test_result.wasSuccessful():
       print('\n***\nRun one of these:\n' +
-            './tests/integration/integration_tests.py --fix\n' +
-            './tests/integration/integration_tests.py --fix --add\n' +
+            './tools/integration_tests.py --fix\n' +
+            './tools/integration_tests.py --fix --add\n' +
             '***\n')
       exit(1)
     else:
