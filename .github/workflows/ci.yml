@@ -328,7 +328,7 @@ jobs:
 ### Build pcb2gcode
     - name: Build pcb2gcode
       run: |
-        cmake --build build -j ${NUM_CPUS}
+        VERBOSE=1 cmake --build build -j ${NUM_CPUS}
     - name: Display pcb2gcode version
       run: |
         ./build/pcb2gcode --version
