@@ -454,7 +454,7 @@ if(BUILD_TESTING)
   if(PCB2GCODE_ENABLE_CODE_COVERAGE)
     get_property(PCB2GCODE_TEST_TARGETS GLOBAL PROPERTY PCB2GCODE_TEST_TARGETS)
     setup_target_for_coverage_lcov(
-      NAME pcb2gcode-lcov
+      NAME lcov
       EXECUTABLE "${CMAKE_CTEST_COMMAND}"
       EXECUTABLE_ARGS --output-on-failure
       DEPENDENCIES pcb2gcode ${PCB2GCODE_TEST_TARGETS}

@@ -355,13 +355,13 @@ jobs:
     - name: Gather coverage
       if: matrix.code_coverage != ''
       run: |
-        cmake --build build --target pcb2gcode-lcov -j ${NUM_CPUS}
+        cmake --build build --target lcov -j ${NUM_CPUS}
     - name: Upload coverage artifact
       if: matrix.code_coverage != ''
       uses: actions/upload-artifact@v4
       with:
         name: lcov-${{ steps.sanitize-key.outputs.key }}
-        path: build/pcb2gcode-lcov.info
+        path: build/lcov.info
     - name: Prepare build for upload for Ubuntu
       if: matrix.os != 'windows'
       run: |
@@ -466,10 +466,8 @@ jobs:
         compression-level: 0
     - name: Upload coverage to coveralls
       if: matrix.code_coverage != ''
-      uses: eyal0/github-action@master
+      uses: coverallsapp/github-action@v2.3.6
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: build/pcb2gcode-lcov.info
         flag-name: ci-${{ steps.sanitize-key.outputs.key }}
         parallel: true
     - name: Save version number
@@ -501,9 +499,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Finalize coverage
-      uses: eyal0/github-action@master
+      uses: coverallsapp/github-action@v2.3.6
       with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
         parallel-finished: true
   release:
     if: github.event_name == 'push'
