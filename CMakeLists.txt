@@ -369,11 +369,18 @@ if(BUILD_TESTING)
   endif()
 
   if(PCB2GCODE_ENABLE_CODE_COVERAGE)
+    include(ProcessorCount)
+    ProcessorCount(PCB2GCODE_CTEST_JOBS_VALUE)
+    if(PCB2GCODE_CTEST_JOBS_VALUE EQUAL 0)
+      set(PCB2GCODE_CTEST_JOBS_VALUE 1)
+    else()
+      math(EXPR PCB2GCODE_CTEST_JOBS_VALUE "${PCB2GCODE_CTEST_JOBS_VALUE} * 4")
+    endif()
     get_property(PCB2GCODE_TEST_TARGETS GLOBAL PROPERTY PCB2GCODE_TEST_TARGETS)
     setup_target_for_coverage_lcov(
       NAME lcov
       EXECUTABLE "${CMAKE_CTEST_COMMAND}"
-      EXECUTABLE_ARGS --output-on-failure
+      EXECUTABLE_ARGS --output-on-failure -j ${PCB2GCODE_CTEST_JOBS_VALUE}
       DEPENDENCIES pcb2gcode ${PCB2GCODE_TEST_TARGETS}
       LCOV_ARGS --ignore-errors mismatch,inconsistent --rc branch_coverage=1 --rc function_coverage=1 --no-external
       EXCLUDE "tests/*")
