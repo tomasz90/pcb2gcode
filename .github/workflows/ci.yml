@@ -371,7 +371,7 @@ jobs:
         cmake --build build --target lcov -j ${NUM_CPUS}
     - name: Upload coverage artifact
       if: matrix.code_coverage != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: lcov-${{ steps.sanitize-key.outputs.key }}
         path: build/lcov.info
@@ -465,14 +465,14 @@ jobs:
         GEOS: ${{ matrix.geos }}
     - name: Upload build for Ubuntu
       if: matrix.os != 'windows'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: pcb2gcode-${{ steps.sanitize-key.outputs.key }}-${{ env.PCB2GCODE_VERSION }}
         path: pcb2gcode-${{ steps.sanitize-key.outputs.key }}-${{ env.PCB2GCODE_VERSION }}.tar.gz
         compression-level: 0
     - name: Upload build for Windows # TODO: Fix upload for windows
       if: matrix.os == 'windows' && false
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: pcb2gcode-${{ steps.sanitize-key.outputs.key }}-${{ env.PCB2GCODE_VERSION }}
         path: pcb2gcode-${{ steps.sanitize-key.outputs.key }}-${{ env.PCB2GCODE_VERSION }}.zip
@@ -487,7 +487,7 @@ jobs:
       run: echo "${PCB2GCODE_VERSION}" > version.txt
     - name: Upload version artifact
       if: matrix.code_coverage != ''
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: version-${{ steps.sanitize-key.outputs.key }}.txt
         path: version.txt
