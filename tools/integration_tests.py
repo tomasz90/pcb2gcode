@@ -23,6 +23,10 @@ except:
 import termcolor
 import unittest
 
+# Import fix_up_expected from sibling script in tools/
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from fix_up_expected import fix_up_expected
+
 try:
   from concurrencytest import ConcurrentTestSuite, fork_for_tests
   concurrencytest_available = True
@@ -192,38 +196,6 @@ def colored(text, **color):
 
 class IntegrationTests(unittest.TestCase):
   """Run integration tests."""
-  def fix_up_expected(self, path):
-    """Fix up any files made in the output directory
-
-    This will enlarge all SVG by a factor of 10 in each direction until they are
-    at least 1000 in each dimension.  This makes them easier to view on github.
-    """
-    def bigger(matchobj):
-      width = float(matchobj.group('width'))
-      height = float(matchobj.group('height'))
-      while width < 1000 or height < 1000:
-        width *= 10
-        height *= 10
-      return 'width="{:.12g}" height="{:.12g}" '.format(width, height)
-    for root, _, files in os.walk(path):
-      for current_file in files:
-        filepath = os.path.join(root, current_file)
-        with open(filepath, 'r', encoding='utf-8') as f:
-          lines = f.readlines()
-        new_lines = []
-        for line in lines:
-          if line.startswith("<svg"):
-            new_lines.append("<!-- original:\n" +
-                             line +
-                             "-->\n" +
-                             re.sub('width="(?P<width>[^"]*)" height="(?P<height>[^"]*)" ',
-                                    bigger,
-                                    line))
-          else:
-            new_lines.append(line)
-        with open(filepath, 'w', encoding='utf-8') as f:
-          f.writelines(new_lines)
-
   def pcb2gcode_one_directory(self, input_path, pcb2gcode_binary, args, exit_code):
     """Run pcb2gcode once in one directory.
 
@@ -248,7 +220,7 @@ class IntegrationTests(unittest.TestCase):
       proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=input_path)
       result = proc.communicate()
       self.assertEqual(proc.returncode, exit_code)
-      self.fix_up_expected(actual_output_path)
+      fix_up_expected(actual_output_path)
     finally:
       print(result[0], file=sys.stderr)
     return actual_output_path
