@@ -237,27 +237,10 @@ add_executable(wkt_to_svg ${PCB2GCODE_WKT_TO_SVG_SOURCES})
 pcb2gcode_apply_common(wkt_to_svg)
 
 if(BUILD_TESTING)
-  function(pcb2gcode_disable_test_source_coverage target_name)
-    if(NOT PCB2GCODE_ENABLE_CODE_COVERAGE)
-      return()
-    endif()
-
-    get_target_property(target_sources "${target_name}" SOURCES)
-    foreach(source IN LISTS target_sources)
-      if(source MATCHES "(/|^)([^/]+_tests\\.cpp)$")
-        set_property(
-          SOURCE "${source}"
-          APPEND
-          PROPERTY COMPILE_OPTIONS -fno-profile-arcs -fno-test-coverage)
-      endif()
-    endforeach()
-  endfunction()
-
   function(pcb2gcode_add_test_executable target_name)
     pcb2gcode_resolve_sources(PCB2GCODE_TEST_SOURCES ${ARGN})
     add_executable("${target_name}" ${PCB2GCODE_TEST_SOURCES})
     target_link_libraries("${target_name}" PRIVATE pcb2gcode_objects)
-    pcb2gcode_disable_test_source_coverage("${target_name}")
     pcb2gcode_apply_common("${target_name}")
     target_link_libraries("${target_name}" PRIVATE Boost::unit_test_framework)
     add_test(NAME "${target_name}" COMMAND "${target_name}")
@@ -297,7 +280,6 @@ if(BUILD_TESTING)
     gerberimporter_tests.cpp)
   add_executable(gerberimporter_tests ${PCB2GCODE_GERBERIMPORTER_TEST_SOURCES})
   target_link_libraries(gerberimporter_tests PRIVATE pcb2gcode_objects)
-  pcb2gcode_disable_test_source_coverage(gerberimporter_tests)
   pcb2gcode_apply_common(gerberimporter_tests)
   add_test(
     NAME gerberimporter_tests
