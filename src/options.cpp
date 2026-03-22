@@ -116,9 +116,11 @@ void options::parse(int argc, const char** argv) {
       basename = instance().vm["basename"].as<string>() + "_";
       instance().vm.at("front-output").value() = basename + "front.ngc";
       instance().vm.at("back-output").value() = basename + "back.ngc";
-      instance().vm.at("drill-output").value() = basename + "drill.ngc";
+      instance().vm.at("drill-pth-output").value() = basename + "drill_pth.ngc";
+      instance().vm.at("drill-npth-output").value() = basename + "drill_npth.ngc";
       instance().vm.at("outline-output").value() = basename + "outline.ngc";
-      instance().vm.at("milldrill-output").value() = basename + "milldrill.ngc";
+      instance().vm.at("milldrill-pth-output").value() = basename + "milldrill_pth.ngc";
+      instance().vm.at("milldrill-npth-output").value() = basename + "milldrill_npth.ngc";
     }
 
     if (instance().vm.count("tolerance")) {
@@ -209,7 +211,8 @@ options::options()
 
    po::options_description drilling_options("Drilling options, for making holes in the PCB");
    drilling_options.add_options()
-       ("drill", po::value<string>(), "Excellon drill file")
+       ("drill-pth", po::value<string>(), "Excellon drill file for plated through-holes (PTH)")
+       ("drill-npth", po::value<string>(), "Excellon drill file for non-plated holes (NPTH)")
        ("milldrill", po::value<bool>()->default_value(false)->implicit_value(true), "[DEPRECATED] Use min-milldrill-hole-diameter=0 instead")
        ("milldrill-diameter", po::value<Length>(), "diameter of the end mill used for drilling with --milldrill")
        ("min-milldrill-hole-diameter", po::value<Length>()->default_value(Length(std::numeric_limits<double>::infinity())),
@@ -225,11 +228,13 @@ options::options()
         ->default_value(std::vector<AvailableDrills>{})
         ->multitoken(), "list of drills available")
        ("onedrill", po::value<bool>()->default_value(false)->implicit_value(true), "use only one drill bit size")
-       ("drill-output", po::value<string>()->default_value("drill.ngc"), "output file for drilling")
+       ("drill-pth-output", po::value<string>()->default_value("drill_pth.ngc"), "output for drill-pth")
+       ("drill-npth-output", po::value<string>()->default_value("drill_npth.ngc"), "output for drill-npth")
        ("nog91-1", po::value<bool>()->default_value(false)->implicit_value(true), "do not explicitly set G91.1 in drill headers")
        ("nog81", po::value<bool>()->default_value(false)->implicit_value(true), "replace G81 with G0+G1")
        ("nom6", po::value<bool>()->default_value(false)->implicit_value(true), "do not emit M6 on tool changes")
-       ("milldrill-output", po::value<string>()->default_value("milldrill.ngc"), "output file for milldrilling");
+       ("milldrill-pth-output", po::value<string>()->default_value("milldrill_pth.ngc"), "output file for milldrilling (PTH file from drill-pth)")
+       ("milldrill-npth-output", po::value<string>()->default_value("milldrill_npth.ngc"), "output file for milldrilling (NPTH file from drill-npth)");
    cfg_options.add(drilling_options);
 
    po::options_description milling_options("Milling options, for milling traces into the PCB");
@@ -424,7 +429,7 @@ static void check_generic_parameters(po::variables_map const& vm)
     //---------------------------------------------------------------------------
     //Check for available board dimensions:
 
-    if (vm.count("drill")
+    if ((vm.count("drill-pth") || vm.count("drill-npth"))
             && !(vm.count("front") || vm.count("back") || vm.count("outline")))
     {
         cerr << "Warning: Board dimensions unknown. Gcode for drilling will be probably misaligned.\n";
@@ -559,7 +564,7 @@ static void check_drilling_parameters(po::variables_map const& vm)
     unit = vm["metric"].as<bool>() ? (1. / 25.4) : 1;
 
     //only check the parameters if a drill file is given
-    if (vm.count("drill"))
+    if (vm.count("drill-pth") || vm.count("drill-npth"))
     {
 
         if (!vm.count("zdrill")) {
@@ -613,7 +618,7 @@ static void check_cutting_parameters(po::variables_map const& vm) {
 
   //only check the parameters if an outline file is given or milldrill is enabled
   if (vm.count("outline") ||
-      (vm.count("drill") &&
+      ((vm.count("drill-pth") || vm.count("drill-npth")) &&
        (vm["min-milldrill-hole-diameter"].as<Length>() < Length(std::numeric_limits<double>::infinity())))) {
     if (!vm.count("zcut")) {
       options::maybe_throw("Error: Board cutting depth (--zcut) not specified.", ERR_NOZCUT);

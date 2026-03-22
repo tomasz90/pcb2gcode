@@ -48,6 +48,7 @@ using std::string;
 #include "units.hpp"
 
 #include <boost/algorithm/string.hpp>
+#include <boost/optional.hpp>
 #include <boost/version.hpp>
 
 void do_pcb2gcode(int argc, const char* argv[]) {
@@ -140,7 +141,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
     auto cutter = make_shared<Cutter>();
 
     if (vm.count("outline") ||
-        (vm.count("drill") &&
+        ((vm.count("drill-pth") || vm.count("drill-npth")) &&
          vm["min-milldrill-hole-diameter"].as<Length>() < Length(std::numeric_limits<double>::infinity()))) {
       cutter->tool_diameter = vm["cutter-diameter"].as<Length>().asInch(unit);
       cutter->zwork = vm["zcut"].as<Length>().asInch(unit);
@@ -173,7 +174,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
 
     shared_ptr<Driller> driller;
 
-    if (vm.count("drill"))
+    if (vm.count("drill-pth") || vm.count("drill-npth"))
     {
         driller = make_shared<Driller>();
         driller->zwork = vm["zdrill"].as<Length>().asInch(unit);
@@ -328,73 +329,141 @@ void do_pcb2gcode(int argc, const char* argv[]) {
 
     cout << "Importing drill... " << flush;
 
-    if (vm.count("drill") > 0) {
+    if (vm.count("drill-pth") || vm.count("drill-npth")) {
         try {
-            point_type_fp min;
-            point_type_fp max;
+            if (vm.count("drill-pth")) {
+                point_type_fp min;
+                point_type_fp max;
+                const string drill_file = vm["drill-pth"].as<string>();
 
-            //Check if there are layers in "board"; if not, we have to compute
-            //the size of the board now, based only on the size of the drill layer
-            //(the resulting drill gcode will be probably misaligned, but this is the
-            //best we can do)
-            if(board->get_layersnum() == 0)
-            {
-              auto importer = make_shared<GerberImporter>(tolerance);
-              if (!importer->load_file(vm["drill"].as<string>())) {
-                options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
-              }
-              min = importer->get_bounding_box().min_corner();
-              max = importer->get_bounding_box().max_corner();
-            } else {
-              min = board->get_bounding_box().min_corner();
-              max = board->get_bounding_box().max_corner();
-            }
+                cout << "Importing drill-pth... " << flush;
 
-            ExcellonProcessor ep(vm, min, max);
+                //Check if there are layers in "board"; if not, we have to compute
+                //the size of the board now, based only on the size of the drill layer
+                //(the resulting drill gcode will be probably misaligned, but this is the
+                //best we can do)
+                if(board->get_layersnum() == 0)
+                {
+                  auto importer = make_shared<GerberImporter>(tolerance);
+                  if (!importer->load_file(drill_file)) {
+                    options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
+                  }
+                  min = importer->get_bounding_box().min_corner();
+                  max = importer->get_bounding_box().max_corner();
+                } else {
+                  min = board->get_bounding_box().min_corner();
+                  max = board->get_bounding_box().max_corner();
+                }
 
-            ep.add_header(PACKAGE_STRING);
+                ExcellonProcessor ep(vm, min, max, drill_file);
 
-            if (vm.count("preamble") || vm.count("preamble-text"))
-            {
-                ep.set_preamble(preamble);
-            }
+                ep.add_header(PACKAGE_STRING);
 
-            if (vm.count("postamble"))
-            {
-                ep.set_postamble(postamble);
-            }
+                if (vm.count("preamble") || vm.count("preamble-text"))
+                {
+                    ep.set_preamble(preamble);
+                }
 
-            cout << "DONE.\n";
+                if (vm.count("postamble"))
+                {
+                    ep.set_postamble(postamble);
+                }
 
-            boost::optional<string> drill_filename = vm["drill-output"].as<string>();
-            boost::optional<string> milldrill_filename = vm["milldrill-output"].as<string>();
-            if (vm["no-export"].as<bool>())
-            {
-                drill_filename = boost::none;
-                milldrill_filename = boost::none;
-            }
-            auto milldrill = *cutter;
-            if (vm.count("milldrill-diameter")) {
-              milldrill.tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
-            }
-            if (vm.count("zmilldrill")) {
-              milldrill.zwork = vm["zmilldrill"].as<Length>().asInch(unit);
-            } else {
-              milldrill.zwork = vm["zdrill"].as<Length>().asInch(unit);
-            }
-            ep.export_ngc(outputdir, milldrill_filename, milldrill,
+                cout << "DONE.\n";
+
+                boost::optional<string> drill_filename = vm["drill-pth-output"].as<string>();
+                boost::optional<string> milldrill_filename = vm["milldrill-pth-output"].as<string>();
+                if (vm["no-export"].as<bool>())
+                {
+                    drill_filename = boost::none;
+                    milldrill_filename = boost::none;
+                }
+                auto milldrill = *cutter;
+                if (vm.count("milldrill-diameter")) {
+                  milldrill.tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
+                }
+                if (vm.count("zmilldrill")) {
+                  milldrill.zwork = vm["zmilldrill"].as<Length>().asInch(unit);
+                } else {
+                  milldrill.zwork = vm["zdrill"].as<Length>().asInch(unit);
+                }
+                ep.export_ngc(outputdir, milldrill_filename, milldrill,
                           vm["nom6"].as<bool>(),
-                          vm["zchange-absolute"].as<bool>());
-            ep.export_ngc(outputdir, drill_filename,
-                          *driller, vm["onedrill"].as<bool>(), 
+                          vm["zchange-absolute"].as<bool>(),
+                          "milldrill_pth.svg");
+                ep.export_ngc(outputdir, drill_filename,
+                          *driller, vm["onedrill"].as<bool>(),
                           vm["nog81"].as<bool>(),
                           vm["nom6"].as<bool>(),
-                          vm["zchange-absolute"].as<bool>());
+                          vm["zchange-absolute"].as<bool>(),
+                          "drill_pth.svg");
 
-            cout << "DONE. The board should be drilled from the " << ( workSide(vm, "drill") ? "FRONT" : "BACK" ) << " side.\n";
+                cout << "DONE. The board should be drilled from the " << ( workSide(vm, "drill") ? "FRONT" : "BACK" ) << " side.\n";
+            }
+            if (vm.count("drill-npth")) {
+                point_type_fp min;
+                point_type_fp max;
+                const string drill_file = vm["drill-npth"].as<string>();
+
+                cout << "Importing drill-npth... " << flush;
+
+                if (board->get_layersnum() == 0) {
+                  auto importer = make_shared<GerberImporter>(tolerance);
+                  if (!importer->load_file(drill_file)) {
+                    options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
+                  }
+                  min = importer->get_bounding_box().min_corner();
+                  max = importer->get_bounding_box().max_corner();
+                } else {
+                  min = board->get_bounding_box().min_corner();
+                  max = board->get_bounding_box().max_corner();
+                }
+
+                ExcellonProcessor ep(vm, min, max, drill_file);
+
+                ep.add_header(PACKAGE_STRING);
+
+                if (vm.count("preamble") || vm.count("preamble-text")) {
+                    ep.set_preamble(preamble);
+                }
+
+                if (vm.count("postamble")) {
+                    ep.set_postamble(postamble);
+                }
+
+                cout << "DONE.\n";
+
+                boost::optional<string> drill_filename = vm["drill-npth-output"].as<string>();
+                boost::optional<string> milldrill_filename = vm["milldrill-npth-output"].as<string>();
+                if (vm["no-export"].as<bool>()) {
+                    drill_filename = boost::none;
+                    milldrill_filename = boost::none;
+                }
+                auto milldrill = *cutter;
+                if (vm.count("milldrill-diameter")) {
+                  milldrill.tool_diameter = vm["milldrill-diameter"].as<Length>().asInch(unit);
+                }
+                if (vm.count("zmilldrill")) {
+                  milldrill.zwork = vm["zmilldrill"].as<Length>().asInch(unit);
+                } else {
+                  milldrill.zwork = vm["zdrill"].as<Length>().asInch(unit);
+                }
+                ep.export_ngc(outputdir, milldrill_filename, milldrill,
+                          vm["nom6"].as<bool>(),
+                          vm["zchange-absolute"].as<bool>(),
+                          "milldrill_npth.svg");
+                ep.export_ngc(outputdir, drill_filename,
+                          *driller, vm["onedrill"].as<bool>(),
+                          vm["nog81"].as<bool>(),
+                          vm["nom6"].as<bool>(),
+                          vm["zchange-absolute"].as<bool>(),
+                          "drill_npth.svg");
+
+                cout << "DONE. The board should be drilled from the " << ( workSide(vm, "drill") ? "FRONT" : "BACK" ) << " side.\n";
+            }
 
         } catch (const drill_exception& e) {
-          options::maybe_throw("ERROR: drill_exception", ERR_INVALIDPARAMETER);
+            options::maybe_throw("ERROR: drill_exception", ERR_INVALIDPARAMETER);
         }
     } else {
         cout << "not specified.\n";

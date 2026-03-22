@@ -75,15 +75,18 @@ class ExcellonProcessor
 {
 public:
     ExcellonProcessor(const boost::program_options::variables_map& options,
-                      const point_type_fp min, const point_type_fp max);
+                      const point_type_fp min, const point_type_fp max,
+                      const std::string& drill_file);
     void add_header(std::string);
     void set_preamble(std::string);
     void set_postamble(std::string);
     linestring_type_fp line_to_holes(const linestring_type_fp& line, double drill_diameter);
     void export_ngc(const std::string of_dir, const boost::optional<std::string>& of_name,
-                    Driller const& target, bool onedrill, bool nog81, bool nom6, bool zchange_absolute);
+                    Driller const& target, bool onedrill, bool nog81, bool nom6, bool zchange_absolute,
+                    const std::string& svg_name);
     void export_ngc(const std::string of_dir, const boost::optional<std::string>& of_name,
-                    Cutter const& target, bool nom6, bool zchange_absolute);
+                    Cutter const& target, bool nom6, bool zchange_absolute,
+                    const std::string& svg_name);
 
     std::map<int, drillbit> get_bits();
     std::map<int, multi_linestring_type_fp> get_holes();

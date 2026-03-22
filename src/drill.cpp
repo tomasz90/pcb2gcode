@@ -73,10 +73,11 @@ using std::to_string;
 /******************************************************************************/
 ExcellonProcessor::ExcellonProcessor(const boost::program_options::variables_map& options,
                                      const point_type_fp min,
-                                     const point_type_fp max)
+                                     const point_type_fp max,
+                                     const string& drill_file)
   : board_dimensions(min, max),
     board_center_x(((min + max)/2).x()),
-    project(parse_project(options["drill"].as<string>())),
+    project(parse_project(drill_file)),
     bMetricOutput(options["metricoutput"].as<bool>()),
     parsed_bits(parse_bits()),
     parsed_holes(parse_holes()),
@@ -242,7 +243,8 @@ linestring_type_fp ExcellonProcessor::line_to_holes(const linestring_type_fp& li
 /******************************************************************************/
 void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<string>& of_name,
                                    Driller const& driller, bool onedrill,
-                                   bool nog81, bool nom6, bool zchange_absolute) {
+                                   bool nog81, bool nom6, bool zchange_absolute,
+                                   const string& svg_name) {
     stringstream zchange;
 
     cout << "Exporting drill... ";
@@ -367,7 +369,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
 
     of.close();
 
-    save_svg(bits, holes, of_dir, "original_drill.svg");
+    save_svg(bits, holes, of_dir, svg_name);
 }
 
 /******************************************************************************/
@@ -553,7 +555,8 @@ bool ExcellonProcessor::millhole(std::ofstream &of, double start_x, double start
 
 // milldrill holes
 void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<string>& of_name,
-                                   Cutter const& target, bool nom6, bool zchange_absolute) {
+                                   Cutter const& target, bool nom6, bool zchange_absolute,
+                                   const string& svg_name) {
     unsigned int badHoles = 0;
     stringstream zchange;
 
@@ -669,7 +672,7 @@ void ExcellonProcessor::export_ngc(const string of_dir, const boost::optional<st
              << " bigger than the milling tool." << endl;
     }
 
-    save_svg(bits, holes, of_dir, "original_milldrill.svg");
+    save_svg(bits, holes, of_dir, svg_name);
 }
 
 /******************************************************************************/
