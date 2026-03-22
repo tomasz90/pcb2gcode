@@ -64,3 +64,6 @@ tests/data/gerbv_example/*/*.svg
 
 #clangd cache directory
 /.cache/
+
+/.idea
+/cmake-build-debug
