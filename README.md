@@ -203,3 +203,77 @@ This project is under active development and need your feedback but give it a tr
 
 You can find it in [dockerhub](https://hub.docker.com/r/ngargaud/insolante) for arm and x64 architecture.
 The current embedded version of pcb2gcode is 2.1.0.
+
+---
+
+## Fork changes (tomasz)
+
+This fork introduces the following changes on top of the upstream `3.0.3` release.
+
+### Separate PTH and NPTH drill files (`--drill-pth` / `--drill-npth`)
+
+The original `--drill` option accepted a single Excellon file and produced a
+single set of drill/milldrill outputs. Modern EDA tools (KiCad, Eagle, etc.)
+export two separate drill files:
+
+* **PTH** – Plated Through-Holes (copper-plated, connected to nets)
+* **NPTH** – Non-Plated Through-Holes (mechanical holes, mounting holes, etc.)
+
+The `--drill` option has been replaced with two dedicated options so both files
+can be processed in one run:
+
+| Old option | New option | Output files |
+|---|---|---|
+| `--drill <file>` | `--drill-pth <file>` | `drill_pth.ngc`, `milldrill_pth.ngc` |
+| *(not available)* | `--drill-npth <file>` | `drill_npth.ngc`, `milldrill_npth.ngc` |
+
+**Example `millproject` / `config.ini`:**
+
+```ini
+drill-pth=my_board-PTH.drl
+drill-npth=my_board-NPTH.drl
+```
+
+**Example command line:**
+
+```
+pcb2gcode --front=my_board-F_Cu.gbr \
+          --drill-pth=my_board-PTH.drl \
+          --drill-npth=my_board-NPTH.drl \
+          --zdrill=-1.7mm --zchange=2mm
+```
+
+Both options are independent — you can supply only one if the other is not
+needed. When `--basename` is used, output filenames are automatically derived:
+`<basename>_drill_pth.ngc`, `<basename>_drill_npth.ngc`, etc.
+
+SVG previews are also generated per file: `drill_pth.svg`, `drill_npth.svg`,
+`milldrill_pth.svg`, `milldrill_npth.svg`.
+
+### User-level default config file
+
+When no `--config` flag is given, pcb2gcode now also looks for a config file at:
+
+```
+~/pcb2gcode/config.ini
+```
+
+This file is loaded at the **lowest priority** — a local `millproject` file in
+the working directory still overrides it. It is useful for storing machine-wide
+defaults (feed rates, tool geometry, output paths) that apply to every project
+without copying settings into each project folder.
+
+The path is resolved from the `$HOME` environment variable at runtime, so it
+works generically for any user account.
+
+### Build notes (macOS / Homebrew)
+
+On macOS with a recent Xcode Command Line Tools SDK the system `libffi`
+pkg-config file may reference a non-existent SDK path. Install the Homebrew
+`libffi` and pass its pkg-config path to cmake:
+
+```bash
+brew install libffi
+PKG_CONFIG_PATH="$(brew --prefix libffi)/lib/pkgconfig:$PKG_CONFIG_PATH" \
+  cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local
+```
