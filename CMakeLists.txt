@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 project(
   pcb2gcode
-  VERSION 3.0.3
+  VERSION 3.0.3.1
   DESCRIPTION "Isolation routing and drilling G-code generator for PCBs"
   HOMEPAGE_URL "https://github.com/pcb2gcode/pcb2gcode"
   LANGUAGES C CXX)
@@ -115,7 +115,7 @@ if(BUILD_TESTING)
   find_package(Boost 1.60 CONFIG REQUIRED COMPONENTS unit_test_framework)
   find_package(Python3 COMPONENTS Interpreter REQUIRED)
   pkg_check_modules(GLIBMM REQUIRED IMPORTED_TARGET glibmm-2.4>=2.8)
-  pkg_check_modules(GDKMM REQUIRED IMPORTED_TARGET gdkmm-2.4>=2.8)
+  pkg_check_modules(GDKMM REQUIRED IMPORTED_TARGET gtkmm-3.0)
   pkg_check_modules(RSVG REQUIRED IMPORTED_TARGET librsvg-2.0>=2.0)
   if(RSVG_VERSION VERSION_GREATER_EQUAL "2.46")
     set(HAVE_RSVG_HANDLE_RENDER_DOCUMENT 1)

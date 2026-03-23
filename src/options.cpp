@@ -25,6 +25,7 @@
 
 #include <fstream>
 #include <list>
+#include <cstdlib>
 #include <boost/exception/all.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -101,10 +102,18 @@ void options::parse(int argc, const char** argv) {
     po::notify(instance().vm);
 
     if (!instance().vm["noconfigfile"].as<bool>()) {
-      parse_files(
-          flatten(
-              instance().vm["config"].as<std::vector<CommaSeparated<string>>>()),
-          instance().vm["config"].defaulted());
+      auto config_files = flatten(
+          instance().vm["config"].as<std::vector<CommaSeparated<string>>>());
+      const bool defaulted = instance().vm["config"].defaulted();
+      if (defaulted) {
+        const char* home = getenv("HOME");
+        if (home) {
+          // Prepend user config as lowest priority; millproject overrides it.
+          config_files.insert(config_files.begin(),
+                              std::string(home) + "/pcb2gcode/config.ini");
+        }
+      }
+      parse_files(config_files, defaulted);
     }
 
     if (instance().vm.count("basename")) {
