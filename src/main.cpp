@@ -94,7 +94,7 @@ void do_pcb2gcode(int argc, const char* argv[]) {
         vm["spindown-time"].as<Time>().asMillisecond(1) : vm["spinup-time"].as<Time>().asMillisecond(1);
     shared_ptr<Isolator> isolator;
 
-    if (vm.count("front") || vm.count("back"))
+    if (vm.count("front") || vm.count("back") || vm.count("inverted"))
     {
         isolator = make_shared<Isolator>();
         for (const auto& tool_diameter : flatten(vm["mill-diameters"].as<std::vector<CommaSeparated<Length>>>())) {
@@ -114,7 +114,9 @@ void do_pcb2gcode(int argc, const char* argv[]) {
         isolator->speed = vm["mill-speed"].as<Rpm>().asRpm(1);
         isolator->zchange = vm["zchange"].as<Length>().asInch(unit);
         isolator->extra_passes = vm["extra-passes"].as<int>();
-        isolator->isolation_width = vm["isolation-width"].as<Length>().asInch(unit);
+        isolator->isolation_width = (vm["invert-gerbers"].as<bool>() && vm.count("isolation-width-inverted"))
+            ? vm["isolation-width-inverted"].as<Length>().asInch(unit)
+            : vm["isolation-width"].as<Length>().asInch(unit);
         isolator->optimise = vm["optimise"].as<Length>().asInch(unit);
         isolator->offset = vm["offset"].as<Length>().asInch(unit);
         isolator->preserve_thermal_reliefs = vm["preserve-thermal-reliefs"].as<bool>();
@@ -136,6 +138,14 @@ void do_pcb2gcode(int argc, const char* argv[]) {
             vm["post-milling-gcode"].as<vector<string>>(), "\n");
         isolator->spinup_time = vm["spinup-time"].as<Time>().asMillisecond(1);
         isolator->spindown_time = spindown_time;
+    }
+
+    shared_ptr<Isolator> isolator_inverted;
+    if (vm.count("inverted") && isolator) {
+        isolator_inverted = make_shared<Isolator>(*isolator);
+        if (vm.count("isolation-width-inverted")) {
+            isolator_inverted->isolation_width = vm["isolation-width-inverted"].as<Length>().asInch(unit);
+        }
     }
 
     auto cutter = make_shared<Cutter>();
@@ -315,6 +325,19 @@ void do_pcb2gcode(int argc, const char* argv[]) {
         options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
       }
       prepared_layers.emplace("outline", std::make_tuple(std::move(importer), cutter, !workSide(vm, "cut"), ymirror));
+      cout << "DONE.\n";
+    } else {
+      cout << "not specified.\n";
+    }
+
+    cout << "Importing inverted layer... " << flush;
+    if (vm.count("inverted") > 0) {
+      string invertedfile = vm["inverted"].as<string>();
+      GerberImporter importer(tolerance);
+      if (!importer.load_file(invertedfile)) {
+        options::maybe_throw("ERROR.", ERR_INVALIDPARAMETER);
+      }
+      prepared_layers.emplace("inverted", std::make_tuple(std::move(importer), isolator_inverted, false, ymirror));
       cout << "DONE.\n";
     } else {
       cout << "not specified.\n";

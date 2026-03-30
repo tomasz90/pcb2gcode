@@ -266,6 +266,40 @@ without copying settings into each project folder.
 The path is resolved from the `$HOME` environment variable at runtime, so it
 works generically for any user account.
 
+### Inverted layer support (`--inverted` / `--isolation-width-inverted`)
+
+An `--inverted` option has been added to specify a Gerber file that is always
+processed with inverted polarity (copper clearing mode), independently of the
+`--invert-gerbers` flag.
+
+This is useful when you want to run both a normal trace isolation pass and a
+copper-clearing pass in the same config without toggling `--invert-gerbers` and
+`--isolation-width` each time.
+
+**New options:**
+
+| Option | Description |
+|---|---|
+| `--inverted <file>` | Gerber file to process as an always-inverted layer |
+| `--inverted-output <file>` | Output filename (default: `inverted.ngc`) |
+| `--isolation-width-inverted <width>` | Isolation width for all inverted layers. Applied to the `--inverted` layer and to `--front`/`--back` when `--invert-gerbers=true`. Falls back to `--isolation-width` if not set. |
+
+**Example `config.ini`:**
+
+```ini
+front=Gerber_TopLayer.GTL
+inverted=Gerber_TopLayer.GTL       # same file, processed inverted for copper clearing
+isolation-width=0.5mm              # normal trace isolation
+isolation-width-inverted=3mm       # wide clearance for inverted pass
+```
+
+This produces both `front.ngc` (normal isolation) and `inverted.ngc` (copper
+clearing) in a single run. The `--inverted` layer uses the same milling
+parameters (feed, speed, depth) as `--front`/`--back`.
+
+When `--basename` is used, the output is automatically named
+`<basename>_inverted.ngc`.
+
 ### Build notes (macOS / Homebrew)
 
 On macOS with a recent Xcode Command Line Tools SDK the system `libffi`

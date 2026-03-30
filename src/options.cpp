@@ -125,6 +125,7 @@ void options::parse(int argc, const char** argv) {
       basename = instance().vm["basename"].as<string>() + "_";
       instance().vm.at("front-output").value() = basename + "front.ngc";
       instance().vm.at("back-output").value() = basename + "back.ngc";
+      instance().vm.at("inverted-output").value() = basename + "inverted.ngc";
       instance().vm.at("drill-pth-output").value() = basename + "drill_pth.ngc";
       instance().vm.at("drill-npth-output").value() = basename + "drill_npth.ngc";
       instance().vm.at("outline-output").value() = basename + "outline.ngc";
@@ -250,6 +251,7 @@ options::options()
    milling_options.add_options()
        ("front", po::value<string>(),"front side RS274-X .gbr")
        ("back", po::value<string>(), "back side RS274-X .gbr")
+       ("inverted", po::value<string>(), "Gerber file to process as an always-inverted layer (e.g. for copper clearing)")
        ("voronoi", po::value<bool>()->default_value(false)->implicit_value(true), "generate voronoi regions")
        ("offset", po::value<Length>()->default_value(0), "Note: Prefer to use --mill-diameters and --milling-overlap if you just that's what you mean."
         "  An optional offset to add to all traces, useful if the bit has a little slop that you want to keep out of the trace.")
@@ -259,6 +261,7 @@ options::options()
         "How much to overlap milling passes, from 0% to 100% or an absolute length")
        ("isolation-width", po::value<Length>()->default_value(Length(0)),
         "Minimum isolation width between copper surfaces")
+       ("isolation-width-inverted", po::value<Length>(), "isolation width for inverted layers: the --inverted layer and front/back when --invert-gerbers is set. Falls back to --isolation-width if not specified.")
        ("extra-passes", po::value<int>()->default_value(0), "[DEPRECATED] use --isolation-width instead. "
         "Specify the the number of extra isolation passes, increasing the isolation width half the tool diameter with each pass")
        ("pre-milling-gcode", po::value<std::vector<string>>()->default_value(std::vector<string>{}, ""),
@@ -278,7 +281,8 @@ options::options()
         "Draw lines in the gerber file as just lines and not as filled in shapes")
        ("preserve-thermal-reliefs", po::value<bool>()->default_value(true)->implicit_value(true), "generate mill paths for thermal reliefs in voronoi mode")
        ("front-output", po::value<string>()->default_value("front.ngc"), "output file for front layer")
-       ("back-output", po::value<string>()->default_value("back.ngc"), "output file for back layer");
+       ("back-output", po::value<string>()->default_value("back.ngc"), "output file for back layer")
+       ("inverted-output", po::value<string>()->default_value("inverted.ngc"), "output file for the inverted layer");
    cfg_options.add(milling_options);
 
    po::options_description outline_options("Outline options, for cutting the PCB out of the FR4");
@@ -439,7 +443,7 @@ static void check_generic_parameters(po::variables_map const& vm)
     //Check for available board dimensions:
 
     if ((vm.count("drill-pth") || vm.count("drill-npth"))
-            && !(vm.count("front") || vm.count("back") || vm.count("outline")))
+            && !(vm.count("front") || vm.count("back") || vm.count("outline") || vm.count("inverted")))
     {
         cerr << "Warning: Board dimensions unknown. Gcode for drilling will be probably misaligned.\n";
     }
@@ -513,7 +517,7 @@ static void check_milling_parameters(po::variables_map const& vm)
 
     unit = vm["metric"].as<bool>() ? (1. / 25.4) : 1;
 
-    if (vm.count("front") || vm.count("back"))
+    if (vm.count("front") || vm.count("back") || vm.count("inverted"))
     {
 
       if (!vm.count("zwork")) {

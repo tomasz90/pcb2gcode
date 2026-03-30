@@ -101,7 +101,7 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
       coordinate_type_fp tool_diameter = outline_mill->tool_diameter;
       bounding_box = bg::return_buffer<box_type_fp>(importer.get_bounding_box(), tool_diameter);
     } else {
-      for (const auto& layer_name : std::vector<std::string>{"front", "back"}) {
+      for (const auto& layer_name : std::vector<std::string>{"front", "back", "inverted"}) {
         const auto current_layer = prepared_layers.find(layer_name);
         if (current_layer != prepared_layers.cend()) {
           shared_ptr<Isolator> trace_mill = static_pointer_cast<Isolator>(get<1>(current_layer->second));
@@ -110,7 +110,8 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
             // Testing showed that 2 was not enough by 3 and above remove all
             // the small connecting lines that would potentially be created.
             double extra_passes_margin = trace_mill->tolerance * 3;
-            if (!invert_gerbers) {
+            bool layer_is_inverted = invert_gerbers || (layer_name == "inverted");
+            if (!layer_is_inverted) {
               auto tool_diameter = tool.first;
               auto overlap_width = tool.second;
               auto extra_passes = std::max(
@@ -146,7 +147,7 @@ void Board::createLayers(std::map<std::string, std::tuple<GerberImporter, std::s
           Surface_vectorial surface(
               bounding_box,
               layer_name, outputdir, tsp_2opt,
-              mill_feed_direction, invert_gerbers,
+              mill_feed_direction, invert_gerbers || (layer_name == "inverted"),
               render_paths_to_shapes || (layer_name == "outline"));
           if (fill) {
             surface.enable_filling();
